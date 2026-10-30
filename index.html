@@ -1,0 +1,1075 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EzSoft</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27white%27 stroke=%27black%27 stroke-width=%276%27/%3E%3Ctext x=%2732%27 y=%2743%27 font-family=%27Segoe UI,Arial,sans-serif%27 font-size=%2730%27 font-weight=%27700%27 fill=%27black%27 text-anchor=%27middle%27%3EEz%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: quiet sidebar + reading column on desktop; on phones a slim top bar and a bottom tab bar.
+   Warm paper neutrals, serif page titles, green as the only accent. */
+:root {
+  --bg: #F7F6F2; --side: #EFEDE6; --surface: #FFFFFF; --surface-2: #F2F0EA; --line: #E4E0D6; --line-2: #D6D1C4;
+  --ink: #1F1E1B; --ink-2: #57544C; --muted: #8A867B;
+  --accent: #1F1E1B; --accent-soft: #EAE7DF; --on-accent: #FFFFFF;
+  --ok: #1C7A47; --ok-soft: #E2F0E7; --warn: #A15C07; --warn-soft: #F8ECD8; --bad: #B4232F; --bad-soft: #F8E1E2;
+    --f-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --r: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1D1C1A; --side: #181715; --surface: #262522; --surface-2: #2E2C29; --line: #36342F; --line-2: #45423C;
+  --ink: #ECE9E2; --ink-2: #B8B3A8; --muted: #8C877C;
+  --accent: #ECE9E2; --accent-soft: #34322E; --on-accent: #1D1C1A;
+  --ok: #5FC98C; --ok-soft: #1F3428; --warn: #E3A54A; --warn-soft: #3A2C16; --bad: #F07A80; --bad-soft: #3D1F22;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #1D1C1A; --side: #181715; --surface: #262522; --surface-2: #2E2C29; --line: #36342F; --line-2: #45423C;
+  --ink: #ECE9E2; --ink-2: #B8B3A8; --muted: #8C877C;
+  --accent: #ECE9E2; --accent-soft: #34322E; --on-accent: #1D1C1A;
+  --ok: #5FC98C; --ok-soft: #1F3428; --warn: #E3A54A; --warn-soft: #3A2C16; --bad: #F07A80; --bad-soft: #3D1F22;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--f-body); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1, h2 { font-family: var(--f-display); font-weight: 500; letter-spacing: -0.01em; }
+h3 { font-size: 15px; font-weight: 600; }
+button, input, select { font: inherit; color: inherit; }
+.mono { font-family: var(--f-mono); font-size: 0.84em; }
+.muted { color: var(--muted); }
+
+/* controls */
+.btn { border: 1px solid var(--line-2); background: var(--surface); border-radius: 9px; padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: 15px; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, select { width: 100%; border: 1px solid var(--line-2); background: var(--surface); border-radius: 9px; padding: 9px 12px; }
+input:focus, select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+label { display: grid; gap: 5px; font-weight: 600; font-size: 14px; color: var(--ink-2); }
+.msg { min-height: 22px; font-weight: 600; font-size: 14px; }
+.msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
+.login-card .msg:empty { min-height: 0; margin-block: -7px; }
+.link { border: 0; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0; justify-self: start; }
+
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--ink); letter-spacing: -0.01em; }
+.brand i { width: 28px; height: 28px; border-radius: 8px; background: transparent; border: 2px solid var(--ink); display: grid; place-items: center; color: var(--ink); font-weight: 700; font-style: normal; font-size: 13px; }
+
+/* login */
+#login { min-height: 100vh; display: grid; place-items: center; padding-block: 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.login-box { width: min(400px, 100%); display: grid; gap: 16px; }
+.login-box h1 { font-size: 30px; }
+.login-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: grid; gap: 14px; }
+.pw { position: relative; }
+.pw input { padding-right: 46px; }
+.pw button { position: absolute; right: 3px; bottom: 3px; height: 34px; width: 38px; border: 0; background: transparent; cursor: pointer; color: var(--muted); border-radius: 7px; display: grid; place-items: center; }
+.pw button:hover { color: var(--ink); }
+
+/* landing (logged out): one 1120px column; every block shares the same left and right edges */
+#login { display: block; min-height: auto; padding: 0; place-items: initial; }
+.land-wrap { max-width: 1120px; margin: 0 auto; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+.land-top { display: flex; align-items: center; justify-content: space-between; padding-block: calc(env(safe-area-inset-top, 0px) + 22px) 22px; }
+.land-top a { color: var(--ink-2); font-weight: 600; text-decoration: none; font-size: 15px; }
+.land-top a:hover { color: var(--ink); }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: stretch; padding-block: 36px 64px; }
+.hero-left { display: grid; align-content: center; gap: 22px; }
+.hero-left h1 { font-size: clamp(36px, 4.2vw, 52px); line-height: 1.08; }
+.hero-left .lede { margin: -6px 0 6px; color: var(--ink-2); font-size: 18px; max-width: 38ch; }
+.hero-left .login-box { width: min(400px, 100%); }
+.hero-right { background: var(--surface-2); border: 1px solid var(--line); border-radius: 20px; display: grid; align-content: center; padding: 36px; }
+.marks { display: grid; }
+.mark { display: grid; grid-template-columns: 52px minmax(0, 1fr); column-gap: 18px; align-items: center; }
+.marks .mark { padding-block: 22px; border-top: 1px solid var(--line-2); }
+.marks .mark:first-child { border-top: 0; padding-top: 0; }
+.marks .mark:last-child { padding-bottom: 0; }
+.mark i { grid-row: 1 / span 2; width: 52px; height: 52px; border: 2px solid var(--ink); border-radius: 14px; display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 18px; }
+.mark b { font-family: var(--f-display); font-weight: 600; font-size: 26px; line-height: 1.15; }
+.mark b em { font-style: normal; color: var(--muted); font-weight: 500; }
+.mark span { color: var(--ink-2); font-size: 15px; line-height: 1.35; }
+.mark .badge { justify-self: start; }
+.mark.soon i, .mark.soon b { opacity: .5; }
+
+.dl { display: grid; gap: 20px; padding-block: 8px calc(env(safe-area-inset-bottom, 0px) + 64px); border-top: 1px solid var(--line); padding-top: 48px; }
+.dl-head h2 { font-size: 32px; }
+.dl-head p { margin: 4px 0 0; color: var(--ink-2); }
+.dl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.dl-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px 8px; display: flex; flex-direction: column; }
+.dl-card h3 { font-family: var(--f-display); font-size: 21px; font-weight: 600; padding-bottom: 12px; }
+.dl-row { display: grid; grid-template-columns: minmax(0, 1fr) 118px; gap: 12px; align-items: center; min-height: 66px; border-top: 1px solid var(--line); }
+.dl-row b { display: block; font-weight: 600; }
+.dl-row small { display: block; color: var(--muted); font-size: 13px; }
+.dl-row .btn { text-align: center; text-decoration: none; font-size: 14px; padding: 7px 10px; }
+.dl-row a.btn { color: var(--on-accent); }
+.act { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.acc-list { display: grid; gap: 14px; }
+.acc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); display: grid; }
+.acc > section { padding: 14px 18px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.acc > section:first-child { border-top: 0; }
+.acc-head { display: flex; gap: 12px; align-items: start; justify-content: space-between; flex-wrap: wrap; }
+.acc-head h3 { font-size: 16px; overflow-wrap: anywhere; }
+.acc-shop { color: var(--ink-2); font-size: 15px; }
+.acc-edit { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.acc-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.lic-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding-block: 6px; border-top: 1px solid var(--line); }
+.lic-row:first-of-type { border-top: 0; }
+.lic-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-add { display: flex; gap: 8px; flex-wrap: wrap; }
+.acc-add input { flex: 1 1 220px; max-width: 320px; font-family: var(--f-mono); }
+.acc-foot { display: flex; gap: 8px; flex-wrap: wrap; }
+.acc .msg:empty { display: none; }
+.acc-add input::placeholder { font-family: var(--f-body); }
+.btn.small { padding: 4px 10px; font-size: 14px; }
+.btn.link-btn { border-color: transparent; background: transparent; color: var(--ink-2); }
+.btn.link-btn:hover { color: var(--bad); background: var(--bad-soft); }
+@media (max-width: 860px) {
+  .acc-edit { grid-template-columns: 1fr; }
+  .lic-row { grid-template-columns: 70px minmax(0, 1fr) auto; }
+  .lic-row .pill { display: none; }
+}
+#licTable th, #licTable td { padding: 9px 8px; }
+#licTable .msg { overflow-wrap: anywhere; }
+.act .btn { padding: 5px 10px; font-size: 14px; }
+.dl-row .btn[aria-disabled="true"] { color: var(--muted); background: transparent; cursor: default; pointer-events: none; }
+
+/* product home (logged in) */
+.prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.prod { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 14px; text-align: left; cursor: pointer; align-content: start; }
+.prod:hover { border-color: var(--line-2); box-shadow: 0 2px 10px rgb(0 0 0 / .05); }
+.prod:disabled { cursor: default; opacity: .6; box-shadow: none; }
+.prod .mark i { width: 46px; height: 46px; font-size: 17px; border-radius: 12px; }
+.prod .mark b { font-size: 24px; }
+.prod .facts { border-top: 1px solid var(--line); }
+
+/* shell */
+.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+.side { background: var(--side); border-right: 1px solid var(--line); position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 14px 18px max(14px, env(safe-area-inset-left, 0px)); }
+.side .brand { padding: 2px 8px; }
+.tabs { display: grid; gap: 2px; }
+.tab { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 8px 10px; border-radius: 9px; cursor: pointer; font-weight: 500; color: var(--ink-2); text-align: left; font-size: 15px; }
+.tab svg { width: 18px; height: 18px; flex: none; }
+.tab:hover { background: var(--surface-2); color: var(--ink); }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--accent); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+.me { margin-top: auto; display: grid; gap: 8px; padding: 12px 8px 0; border-top: 1px solid var(--line); }
+.who { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.me .btn { justify-self: start; }
+
+main { padding-block: calc(env(safe-area-inset-top, 0px) + 34px) 70px;
+  padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); }
+.page { max-width: 1080px; margin: 0 auto; display: grid; gap: 24px; }
+.page-head h1 { font-size: 34px; line-height: 1.15; }
+.page-head p { margin: 6px 0 0; color: var(--ink-2); }
+
+/* summary: one quiet line of numbers */
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.stat { padding: 14px 18px; border-left: 1px solid var(--line); min-width: 0; }
+.stat:first-child { border-left: 0; }
+.stat span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.stat b { display: block; font-size: 26px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.toolbar input { flex: 1 1 240px; max-width: 360px; }
+.toolbar select { flex: 0 1 190px; }
+.toolbar .grow { flex: 1; }
+
+/* units */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; display: grid; gap: 14px; align-content: start; cursor: pointer; text-align: left; }
+.card:hover { border-color: var(--line-2); box-shadow: 0 2px 10px rgb(0 0 0 / .05); }
+.card-head { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+.card-head h3 { font-size: 17px; }
+.card-head .sub { font-size: 14px; color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.off { background: var(--surface-2); color: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); padding-top: 12px; }
+.fact { min-width: 0; padding-right: 8px; }
+.fact small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.fact b { font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 600; }
+.alert { font-size: 14px; font-weight: 600; color: var(--bad); background: var(--bad-soft); border-radius: 9px; padding: 8px 12px; }
+.alert.warn { color: var(--warn); background: var(--warn-soft); }
+.card .foot { font-size: 12px; }
+.empty { background: transparent; border: 1px dashed var(--line-2); border-radius: var(--r); padding: 32px; text-align: center; color: var(--ink-2); }
+
+/* sheet */
+.sheet-bg { position: fixed; inset: 0; background: rgb(20 18 14 / .4); z-index: 20; }
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: min(720px, 100%); background: var(--bg); z-index: 21; overflow-y: auto; border-left: 1px solid var(--line);
+  padding: calc(env(safe-area-inset-top, 0px) + 22px) max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 32px) 20px; display: grid; gap: 16px; align-content: start; }
+.sheet-head { display: flex; gap: 12px; align-items: start; justify-content: space-between; }
+.sheet-head h2 { font-size: 28px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; display: grid; gap: 12px; min-width: 0; }
+.panel .facts { border-top: 0; padding-top: 0; row-gap: 12px; }
+.form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+td.wrap-text { white-space: normal; min-width: 220px; }
+.bars { display: flex; align-items: end; gap: 4px; height: 120px; padding-top: 8px; border-bottom: 1px solid var(--line); }
+.bars div { flex: 1; min-width: 6px; background: var(--accent); border-radius: 4px 4px 0 0; opacity: .85; }
+.bars div:hover { opacity: 1; }
+.bars div.zero { background: var(--line); height: 2px !important; }
+.bar-labels { display: flex; gap: 4px; font-size: 11px; color: var(--muted); }
+.bar-labels span { flex: 1; text-align: center; min-width: 6px; overflow: hidden; }
+
+/* phones: top bar + bottom tab bar */
+@media (max-width: 860px) {
+  .shell { display: block; }
+  .side { position: sticky; top: 0; z-index: 6; height: auto; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; border-right: 0; border-bottom: 1px solid var(--line);
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
+  .side .brand { padding: 0; }
+  .me { margin: 0; border: 0; padding: 0; display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .who { max-width: 44vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .me .btn { padding: 5px 10px; font-size: 14px; white-space: nowrap; }
+  .who { display: none; }
+  @media (min-width: 520px) { .who { display: block; } }
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 7; display: flex; background: var(--side); border-top: 1px solid var(--line);
+    padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 6px) max(8px, env(safe-area-inset-left, 0px)); }
+  .tab { flex: 1; flex-direction: column; gap: 2px; font-size: 11px; padding: 6px 2px; text-align: center; }
+  .tab[aria-selected="true"] { box-shadow: none; background: var(--accent-soft); }
+  main { padding-block: 20px calc(env(safe-area-inset-bottom, 0px) + 90px);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .page { gap: 18px; }
+  .page-head h1 { font-size: 28px; }
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat:nth-child(3) { border-left: 0; }
+  .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .toolbar input, .toolbar select { max-width: none; flex: 1 1 100%; }
+  .form-row { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: 1fr; }
+  .sheet { border-left: 0; }
+  .land-wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .hero { grid-template-columns: 1fr; gap: 28px; padding-block: 8px 40px; }
+  .hero-left .login-box { width: 100%; }
+  .hero-right { padding: 24px 20px; }
+  .mark { grid-template-columns: 44px minmax(0, 1fr); column-gap: 14px; }
+  .mark i { width: 44px; height: 44px; font-size: 16px; border-radius: 12px; }
+  .mark b { font-size: 22px; }
+  .dl { padding-top: 32px; }
+  .dl-grid, .prod-grid { grid-template-columns: 1fr; }
+}
+@media (min-width: 861px) and (max-width: 1100px) { .dl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: no-preference) { .card, .tab, .btn { transition: background .15s, border-color .15s, box-shadow .15s; } }
+</style>
+</head>
+<body>
+
+<!-- ───── Login ───── -->
+<section id="login" hidden>
+ <div class="land-wrap">
+  <header class="land-top">
+    <div class="brand"><i>Ez</i>EzSoft</div>
+    <a href="#downloads">Downloads</a>
+  </header>
+  <div class="hero">
+    <div class="hero-left">
+      <h1>Every vendo,<br>one place</h1>
+      <p class="lede">Status, sales and alerts for your EzSoft machines, on your phone or PC.</p>
+  <form class="login-box" id="loginForm">
+    <div class="login-card">
+    <label>Email <input id="email" type="email" autocomplete="email" required></label>
+    <label>Password <span class="pw"><input id="password" type="password" autocomplete="current-password" required minlength="6"><button type="button" class="eye" aria-label="Show password"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></span></label>
+    <button class="link" id="forgotBtn" type="button">Forgot password?</button>
+    <div class="msg" id="loginMsg"></div>
+    <button class="btn primary" id="loginBtn" type="submit">Log in</button>
+    <button class="btn" id="signupBtn" type="button">Create account</button>
+    </div>
+  </form>
+  <form class="login-box" id="newPwForm" hidden>
+    <h2 style="font-size:26px;text-align:center">Set a new password</h2>
+    <label>New password <span class="pw"><input id="newPassword" type="password" autocomplete="new-password" required minlength="6"><button type="button" class="eye" aria-label="Show password"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></span></label>
+    <div class="msg" id="newPwMsg"></div>
+    <button class="btn primary" type="submit">Save new password</button>
+  </form>
+    </div>
+    <div class="hero-right" aria-label="EzSoft products">
+      <div class="marks">
+        <div class="mark"><i>Ez</i><b>EzTab <em>Pro</em></b><span>Piso tablet kiosk</span></div>
+        <div class="mark"><i>Ez</i><b>EzPrint <em>Pro</em></b><span>Printing, ID copy and photocopy vendo</span></div>
+        <div class="mark soon"><i>Ez</i><b>EzFi <em>Pro</em></b><span>PisoWiFi · coming soon</span></div>
+      </div>
+    </div>
+  </div>
+  <section class="dl" id="downloads">
+    <div class="dl-head"><h2>Downloads</h2><p>Apps, installers and firmware for EzSoft machines.</p></div>
+    <div class="dl-grid" id="dlPublic"></div>
+  </section>
+ </div>
+</section>
+
+<!-- ───── App ───── -->
+<div id="app" class="shell" hidden>
+  <aside class="side">
+    <div class="brand"><i>Ez</i>EzSoft</div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+      <button class="tab" role="tab" data-tab="units" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="7" rx="1"/><rect x="3" y="10" width="18" height="8" rx="2"/><path d="M7 18v3h10v-3"/></svg><span>EzPrint Pro</span></button>
+      <button class="tab" role="tab" data-tab="licenses" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/></svg><span>Licenses</span></button>
+      <button class="tab dev" role="tab" data-tab="accounts" aria-selected="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 16a3.5 3.5 0 0 1 7 0M15 10h3M15 14h3"/></svg><span>Accounts</span></button>
+      <button class="tab" role="tab" data-tab="downloads" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg><span>Downloads</span></button>
+    </nav>
+    <div class="me"><span class="who" id="who"></span><button class="btn" id="logoutBtn">Log out</button></div>
+  </aside>
+
+  <main>
+   <div class="page">
+    <header class="page-head"><h1 id="pageTitle">Home</h1><p id="pageSub">Your EzSoft products.</p></header>
+
+    <section id="tab-home" style="display:grid;gap:16px"><div class="prod-grid" id="prodGrid"></div></section>
+    <section id="tab-downloads" hidden><div class="dl-grid" id="dlApp"></div></section>
+    <!-- Units -->
+    <section id="tab-units" hidden style="display:grid;gap:20px">
+      <div class="summary" id="summary"></div>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search name, client, chip ID" aria-label="Search units">
+        <select id="filter" aria-label="Show" style="max-width:200px">
+          <option value="all">All units</option>
+          <option value="problem">Needs attention</option>
+          <option value="offline">Offline</option>
+        </select>
+        <span class="grow"></span>
+        <span class="muted" id="updated" style="font-size:14px"></span>
+        <button class="btn" id="refreshBtn">Refresh</button>
+        <button class="btn primary" id="addUnitBtn" type="button">Add unit</button>
+      </div>
+      <form class="panel" id="addUnitForm" hidden>
+        <h3>Add a unit to your account</h3>
+        <p class="muted" style="margin:0">On the machine, open <b>Admin › License</b>. Type the <b>license key</b> and the <b>EzSoft code</b> shown there (the code changes every 10 minutes). The machine must be on and online.</p>
+        <div class="toolbar">
+          <input id="addKey" placeholder="License key  EZP-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" style="max-width:340px;font-family:var(--f-mono)">
+          <input id="addCode" placeholder="EzSoft code  XXXX-XXXX" autocomplete="off" spellcheck="false" maxlength="12" style="max-width:220px;font-family:var(--f-mono);text-transform:uppercase">
+          <button class="btn primary" type="submit">Add</button>
+          <button class="btn" type="button" id="addCancel">Cancel</button>
+        </div>
+        <div class="msg" id="addMsg"></div>
+      </form>
+      <div class="grid" id="units"></div>
+    </section>
+
+    <!-- Clients (developer) -->
+
+    <!-- Accounts (developer) -->
+    <section id="tab-accounts" hidden style="display:grid;gap:16px">
+      <p class="muted" style="margin:0">A new account sees nothing until it has a license. Add one here, or the owner adds it with the EzSoft code from the machine.</p>
+      <div class="acc-list" id="accountsList"></div>
+    </section>
+
+    <!-- Unbind requests -->
+    <section id="tab-licenses" hidden style="display:grid;gap:16px">
+      <div class="toolbar">
+        <select id="licFilter" aria-label="Show" style="max-width:240px">
+          <option value="all">All licenses</option>
+          <option value="online">Online</option>
+          <option value="offline">Offline</option>
+          <option value="long">Offline 7 days or more</option>
+          <option value="unbound">Locked / unbound</option>
+        </select>
+        <span class="grow"></span>
+        <span class="muted" id="licSummary" style="font-size:14px"></span>
+      </div>
+      <div class="panel"><div class="table-wrap"><table id="licTable"></table></div></div>
+    </section>
+
+   </div>
+  </main>
+</div>
+
+<!-- ───── Unit sheet ───── -->
+<div class="sheet-bg" id="sheetBg" hidden></div>
+<aside class="sheet" id="sheet" hidden aria-modal="true" role="dialog"></aside>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// EzCloud website. Talks to Supabase with the logged-in person's rights:
+// the database itself (RLS) decides what each person may see. This key is public on purpose.
+const SUPABASE_URL = "https://mxwrkjjbnwkwnodadfua.supabase.co";
+const SUPABASE_KEY = "sb_publishable_1x6p63xQOzsOy7P6hQxImA_Tz42E6xF";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const peso = c => "₱" + (Number(c || 0) / 100).toLocaleString("en-PH", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const pesoN = n => "₱" + Number(n || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 });
+const dt = s => s ? new Date(s).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
+function ago(s) {
+  if (!s) return "never";
+  const m = Math.round((Date.now() - new Date(s)) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return m + " min ago";
+  const h = Math.round(m / 60);
+  if (h < 48) return h + " h ago";
+  return Math.round(h / 24) + " days ago";
+}
+
+const state = { me: null, dev: false, units: [], clients: [], profiles: [] };
+let recovering = location.hash.includes("type=recovery");   // opened from the reset email
+
+// ───── Login ─────
+async function boot() {
+  const { data: { session } } = await db.auth.getSession();
+  if (recovering) { $("#login").hidden = false; $("#loginForm").hidden = true; $("#newPwForm").hidden = false; }
+  else session ? start(session) : showLogin();
+  db.auth.onAuthStateChange((ev, s) => {
+    if (ev === "SIGNED_OUT") showLogin();
+    if (ev === "PASSWORD_RECOVERY") { recovering = true; $("#app").hidden = true; $("#login").hidden = false; $("#loginForm").hidden = true; $("#newPwForm").hidden = false; return; }
+    if (ev === "SIGNED_IN" && s && !state.me && !recovering) start(s);
+  });
+}
+function showLogin() { state.me = null; $("#app").hidden = true; $("#login").hidden = false; }
+
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  setMsg("loginMsg", "Logging in…");
+  const { data, error } = await db.auth.signInWithPassword({ email: $("#email").value.trim(), password: $("#password").value });
+  if (error) return setMsg("loginMsg", error.message === "Invalid login credentials" ? "Wrong email or password." : error.message, "bad");
+  setMsg("loginMsg", "");
+  start(data.session);
+});
+$("#signupBtn").addEventListener("click", async () => {
+  const email = $("#email").value.trim(), password = $("#password").value;
+  if (!email || password.length < 6) return setMsg("loginMsg", "Type your email and a password (6 or more characters) first.", "bad");
+  const { data, error } = await db.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+  if (error) return setMsg("loginMsg", error.message, "bad");
+  if (data.session) return start(data.session);
+  setMsg("loginMsg", "Account made. Open the email we sent to confirm it, then log in.", "ok");
+});
+$("#logoutBtn").addEventListener("click", () => db.auth.signOut());
+
+// Show / hide password (the eye)
+document.querySelectorAll(".pw .eye").forEach(b => b.addEventListener("click", () => {
+  const input = b.parentElement.querySelector("input");
+  const show = input.type === "password";
+  input.type = show ? "text" : "password";
+  b.setAttribute("aria-label", show ? "Hide password" : "Show password");
+  b.style.color = show ? "var(--accent)" : "";
+}));
+
+// Forgot password: email with a link back here, then a form for the new password
+$("#forgotBtn").addEventListener("click", async () => {
+  const email = $("#email").value.trim();
+  if (!email) return setMsg("loginMsg", "Type your email first, then tap Forgot password.", "bad");
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  setMsg("loginMsg", error ? error.message : "Check your email for the reset link (look in Spam too).", error ? "bad" : "ok");
+});
+$("#newPwForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const { error } = await db.auth.updateUser({ password: $("#newPassword").value });
+  if (error) return setMsg("newPwMsg", error.message, "bad");
+  recovering = false;
+  $("#newPwForm").hidden = true; $("#loginForm").hidden = false;
+  history.replaceState(null, "", location.pathname);
+  const { data: { session } } = await db.auth.getSession();
+  session ? start(session) : setMsg("loginMsg", "Password saved. Log in with it now.", "ok");
+});
+function setMsg(id, text, kind = "") { const el = $("#" + id); el.textContent = text; el.className = "msg " + kind; }
+
+async function start(session) {
+  state.me = session.user;
+  $("#login").hidden = true; $("#app").hidden = false;
+  const { data: prof } = await db.from("profiles").select("*").eq("user_id", session.user.id).maybeSingle();
+  state.dev = prof?.role === "developer";
+  $("#who").textContent = (session.user.email || "") + (state.dev ? " · developer" : "");
+  document.querySelectorAll(".tab.dev").forEach(t => t.hidden = !state.dev);
+  await loadAll();
+  // A client with units in one product only: straight to that product.
+  const mine = new Set(state.units.map(u => u.product));
+  showTab(!state.dev && mine.size === 1 && mine.has("ezprint") ? "units" : "home");
+}
+
+// ───── Tabs ─────
+const TABS = ["home", "units", "licenses", "accounts", "downloads"];
+const HEADS = {
+  home: ["Home", "Your EzSoft products."], units: ["EzPrint Pro", "Every EzPrint Pro machine, live."],
+  clients: ["Clients", "The shops that own your units."], accounts: ["Accounts", "Each login, its shop and its licenses."],
+  unbind: ["Unbind requests", "Moving a license to a new coin slot."], licenses: ["Licenses", "Every EzPrint Pro license, when it was last online, and unbind requests."], downloads: ["Downloads", "Apps, installers and firmware."]
+};
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === name));
+  TABS.forEach(n => $("#tab-" + n).hidden = n !== name);
+  $("#pageTitle").textContent = HEADS[name][0]; $("#pageSub").textContent = HEADS[name][1];
+  window.scrollTo(0, 0);
+  if (name === "home") renderHome();
+  if (name === "accounts") renderAccounts();
+  if (name === "licenses") renderLicenses();
+  if (name === "downloads") renderDownloads($("#dlApp"));
+}
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => showTab(t.dataset.tab)));
+
+// ───── Products ─────
+// Products that report to EzSoft. "ready: false" = shown, not openable yet.
+const PRODUCTS = [
+  { id: "ezprint", name: "EzPrint", sub: "Pro", tag: "Printing, ID copy and photocopy vendo", tab: "units", ready: true },
+  { id: "eztab", name: "EzTab", sub: "Pro", tag: "Piso tablet kiosk", ready: false, note: "Connects in a later EzTab update" },
+  { id: "ezfi", name: "EzFi", sub: "Pro", tag: "PisoWiFi", ready: false, note: "Coming soon" }
+];
+function renderHome() {
+  $("#prodGrid").innerHTML = PRODUCTS.map(p => {
+    const list = state.units.filter(u => u.product === p.id);
+    const online = list.filter(u => u.online).length;
+    const bad = list.filter(u => issues(u).some(i => i.kind === "bad")).length;
+    const todayTotal = list.reduce((t, u) => t + today(u).total, 0);
+    const body = p.ready
+      ? `<div class="facts"><div class="fact"><small>Units</small><b>${list.length}</b></div>
+           <div class="fact"><small>Online</small><b>${online}</b></div>
+           <div class="fact"><small>Today</small><b>${pesoN(todayTotal)}</b></div></div>
+         ${bad ? `<div class="alert">${bad} need${bad === 1 ? "s" : ""} attention</div>` : ""}`
+      : `<div class="muted">${esc(p.note)}</div>`;
+    return `<button class="prod" data-prod="${p.id}" ${p.ready ? "" : "disabled"}>
+      <div class="mark"><i>Ez</i><b>${esc(p.name)}${p.sub ? ` <em>${esc(p.sub)}</em>` : ""}</b><span>${esc(p.tag)}</span></div>${body}</button>`;
+  }).join("");
+  document.querySelectorAll("[data-prod]").forEach(b => b.addEventListener("click", () => {
+    const p = PRODUCTS.find(x => x.id === b.dataset.prod); if (p?.ready) showTab(p.tab);
+  }));
+}
+
+// ───── Downloads ─────
+// Fill in "url" (and "version") when a file is ready; empty url = "Coming soon".
+const DOWNLOADS = [
+  { product: "EzPrint Pro", items: [
+    { name: "EzPrint Pro for Windows", kind: "Installer · Windows 10/11", version: "", url: "" },
+    { name: "Coin slot firmware", kind: "ESP32 · .bin", version: "", url: "" },
+    { name: "Setup guide", kind: "PDF", version: "", url: "" } ] },
+  { product: "EzTab Pro", items: [
+    { name: "EzTab Pro app", kind: "Android · .apk", version: "", url: "" },
+    { name: "Coin slot firmware", kind: "ESP32 · .bin", version: "", url: "" },
+    { name: "EzPC for Windows", kind: "Installer · Windows", version: "", url: "" } ] },
+  { product: "EzFi Pro", items: [
+    { name: "EzFi Pro portal", kind: "OpenWrt package", version: "", url: "" },
+    { name: "Coin slot firmware", kind: "ESP32 · .bin", version: "", url: "" } ] }
+];
+function renderDownloads(el) {
+  el.innerHTML = DOWNLOADS.map(g => `<div class="dl-card"><h3>${esc(g.product)}</h3>
+    ${g.items.map(d => `<div class="dl-row"><div><b>${esc(d.name)}</b><small>${esc(d.kind)}${d.version ? " · v" + esc(d.version) : ""}</small></div>
+      ${d.url ? `<a class="btn primary" href="${esc(d.url)}" target="_blank" rel="noopener">Download</a>`
+              : `<span class="btn" aria-disabled="true">Coming soon</span>`}</div>`).join("")}
+  </div>`).join("");
+}
+
+// ───── Data ─────
+async function loadAll() {
+  const [u, c, p, ub] = await Promise.all([
+    db.from("unit_overview").select("*").order("created_at"),
+    db.from("clients").select("*").order("name"),
+    state.dev ? db.from("profiles").select("*").order("created_at") : Promise.resolve({ data: [] }),
+    db.from("unbind_requests").select("id,unit_id,status,created_at,locked_at,reason").order("created_at", { ascending: false }).limit(500)
+  ]);
+  if (u.error) { $("#units").innerHTML = `<div class="empty">Couldn't load units: ${esc(u.error.message)}</div>`; return; }
+  state.units = (u.data || []).map(x => {
+    // Ping got no answer and nothing came since: offline now (don't wait for the check-in window).
+    const na = noAnswer[x.id];
+    if (na && !(x.last_contact && new Date(x.last_contact) > na)) x.online = false; else delete noAnswer[x.id];
+    return x;
+  });
+  state.clients = c.data || []; state.profiles = p.data || []; state.unbinds = ub.data || [];
+  $("#updated").textContent = "Updated " + new Date().toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+  renderUnits();
+  if (!$("#tab-home").hidden) renderHome();
+  if (!$("#tab-licenses").hidden) renderLicenses();
+}
+$("#refreshBtn").addEventListener("click", loadAll);
+$("#search").addEventListener("input", renderUnits);
+$("#filter").addEventListener("change", renderUnits);
+setInterval(() => { if (state.me && !document.hidden) loadAll(); }, 5 * 60 * 1000);
+
+const clientName = id => state.clients.find(c => c.id === id)?.name || "";
+const unitName = u => u.name || u.status?.name || u.device_id;
+
+/** What needs attention on one unit, worst first. */
+/** Sales "today" from the last report, only if that report was made today (else it was another day's). */
+function today(u) {
+  const s = u.status || {}, at = s.at ? new Date(s.at) : null;
+  const fresh = at && at.toDateString() === new Date().toDateString();
+  return fresh ? { total: Number(s.today?.total || 0), jobs: s.today?.jobs ?? 0, pages: s.today?.pages ?? 0 } : { total: 0, jobs: 0, pages: 0 };
+}
+function issues(u) {
+  const s = u.status || {}, out = [];
+  // Offline: the rest of the status is old (it may have been fixed since), so only say "offline".
+  if (!u.online) return [{ kind: "bad", text: "Offline · last seen " + ago(u.last_contact) }];
+  for (const k of ["printerColor", "printerBw"]) {
+    const p = s[k];
+    if (p && !p.ok) out.push({ kind: "bad", text: (k === "printerBw" ? "B&W printer: " : "Printer: ") + p.detail });
+    else if (p?.warning) out.push({ kind: "warn", text: p.warning });
+  }
+  if (s.paper !== undefined && s.paper <= 0) out.push({ kind: "bad", text: "Out of paper" });
+  else if (s.paper !== undefined && s.paper <= (s.paperLowAt ?? 20)) out.push({ kind: "warn", text: `Paper low · ${s.paper} sheets` });
+  if (s.coinSlot === "offline") out.push({ kind: "bad", text: "Coin slot not connected" });
+  if (s.license && !["Active", "NotSetUp"].includes(s.license)) out.push({ kind: "bad", text: "License: " + s.license });
+  if (s.serviceWarnAt > 0 && s.pagesSinceService >= s.serviceWarnAt) out.push({ kind: "warn", text: `Ink pad counter ${s.pagesSinceService} pages · reset soon` });
+  return out;
+}
+
+function renderUnits() {
+  const q = $("#search").value.trim().toLowerCase(), f = $("#filter").value;
+  const all = state.units.filter(u => u.product === "ezprint");
+  const online = all.filter(u => u.online).length;
+  const problems = all.filter(u => issues(u).some(i => i.kind === "bad")).length;
+  const todayTotal = all.reduce((t, u) => t + today(u).total, 0);
+  $("#summary").innerHTML = `
+    <div class="stat"><span>Units</span><b>${all.length}</b></div>
+    <div class="stat"><span>Online</span><b style="color:var(--ok)">${online}</b></div>
+    <div class="stat"><span>Need attention</span><b style="color:${problems ? "var(--bad)" : "var(--ink)"}">${problems}</b></div>
+    <div class="stat"><span>Sales today</span><b>${pesoN(todayTotal)}</b></div>`;
+
+  const list = all.filter(u => {
+    const hay = [unitName(u), u.device_id, clientName(u.client_id), u.location].join(" ").toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (f === "offline") return !u.online;
+    if (f === "problem") return issues(u).length > 0;
+    return true;
+  });
+
+  if (!all.length) {
+    $("#units").innerHTML = `<div class="empty" style="grid-column:1/-1">${state.dev
+      ? "No EzPrint Pro units yet. A unit appears here a minute after EzPrint Pro starts with an activated license."
+      : "No units linked to your account yet. Ask the developer to link your account to your shop."}</div>`;
+    return;
+  }
+  if (!list.length) { $("#units").innerHTML = `<div class="empty" style="grid-column:1/-1">No units match.</div>`; return; }
+
+  $("#units").innerHTML = list.map(u => {
+    const s = u.status || {}, iss = issues(u), bad = iss.some(i => i.kind === "bad");
+    const pill = !u.online ? `<span class="pill off">Offline</span>` : bad ? `<span class="pill bad">Problem</span>`
+      : iss.length ? `<span class="pill warn">Check</span>` : `<span class="pill ok">Online</span>`;
+    const first = iss[0];
+    return `<button class="card ${!u.online ? "offline" : bad ? "problem" : ""}" data-unit="${esc(u.id)}">
+      <div class="card-head">
+        <div><h3>${esc(unitName(u))}</h3>
+          <div class="sub">${esc([clientName(u.client_id), u.location].filter(Boolean).join(" · ") || "No client yet")}</div></div>
+        ${pill}
+      </div>
+      <div class="facts">
+        <div class="fact"><small>Today</small><b>${pesoN(today(u).total)}</b></div>
+        <div class="fact"><small>${u.online ? "Paper" : "Paper (last)"}</small><b${u.online ? "" : ' class="muted"'}>${s.paper ?? "—"}</b></div>
+        <div class="fact"><small>Seen</small><b style="font-size:14px">${esc(ago(u.last_contact))}</b></div>
+      </div>
+      ${first ? `<div class="alert ${first.kind === "warn" ? "warn" : ""}">${esc(first.text)}${iss.length > 1 ? ` · +${iss.length - 1} more` : ""}</div>` : ""}
+      <div class="muted mono foot">${esc(u.device_id)} · v${esc(u.app_version || "?")}</div>
+    </button>`;
+  }).join("");
+  document.querySelectorAll("[data-unit]").forEach(c => c.addEventListener("click", () => openUnit(c.dataset.unit)));
+}
+
+// ───── Unit sheet ─────
+function closeSheet() { $("#sheet").hidden = true; $("#sheetBg").hidden = true; }
+$("#sheetBg").addEventListener("click", closeSheet);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+async function openUnit(id) {
+  const u = state.units.find(x => x.id === id); if (!u) return;
+  const s = u.status || {};
+  const sheet = $("#sheet");
+  sheet.dataset.unit = id;
+  sheet.hidden = false; $("#sheetBg").hidden = false;
+  sheet.innerHTML = `<div class="sheet-head"><div><h2>${esc(unitName(u))}</h2><div class="muted mono">${esc(u.device_id)}</div></div>
+    <button class="btn" id="closeSheet">Close</button></div><div class="panel muted">Loading…</div>`;
+  $("#closeSheet").onclick = closeSheet;
+
+  const since = new Date(Date.now() - 14 * 86400000).toISOString();
+  const [sales, errs, unb] = await Promise.all([
+    db.from("sales").select("*").eq("unit_id", id).gte("at", since).order("at", { ascending: false }).limit(1000),
+    db.from("unit_errors").select("*").eq("unit_id", id).order("at", { ascending: false }).limit(50),
+    db.from("unbind_requests").select("*").eq("unit_id", id).order("created_at", { ascending: false }).limit(5)
+  ]);
+  const rows = sales.data || [];
+
+  // last 14 days, money kept per day
+  const days = [];
+  for (let i = 13; i >= 0; i--) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i); days.push({ d, c: 0 }); }
+  rows.forEach(r => { const t = new Date(r.at); const day = days.find(x => t >= x.d && t < new Date(x.d.getTime() + 86400000)); if (day) day.c += r.paid_c || 0; });
+  const max = Math.max(1, ...days.map(x => x.c));
+  const total14 = days.reduce((t, x) => t + x.c, 0);
+
+  const printers = ["printerColor", "printerBw"].filter(k => s[k]).map(k => {
+    const p = s[k];
+    return `<tr><td>${k === "printerBw" ? "B&W" : "Colored"}</td><td>${esc(p.name)}</td>
+      <td>${!u.online ? `<span class="pill off">Unknown</span>` : p.ok ? `<span class="pill ok">Ready</span>` : `<span class="pill bad">${esc(p.detail)}</span>`}</td>
+      <td>${!u.online ? `<span class="muted">last known: ${esc(p.ok ? "Ready" : p.detail)}</span>` : esc(p.warning || "")}</td></tr>`;
+  }).join("");
+  const iss = issues(u);
+  const last = u.online ? "" : " (last known)";
+
+  sheet.innerHTML = `
+    <div class="sheet-head"><div><h2>${esc(unitName(u))}</h2>
+      <div class="muted mono">${esc(u.device_id)} · v${esc(u.app_version || "?")}${u.firmware_version ? " · coin slot fw " + esc(u.firmware_version) : ""}</div></div>
+      <button class="btn" id="closeSheet">Close</button></div>
+
+    <div class="panel">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${u.online ? `<span class="pill ok">Online</span>` : `<span class="pill off">Offline</span>`}
+        <span class="muted">Last seen ${esc(ago(u.last_contact))} · full report ${esc(ago(u.last_seen))}</span>
+        <span class="grow" style="flex:1"></span>
+        <button class="btn" id="pingBtn" type="button">Ping</button>
+      </div>
+      <div class="msg" id="pingMsg" hidden></div>
+      ${iss.length ? iss.map(i => `<div class="alert ${i.kind === "warn" ? "warn" : ""}">${esc(i.text)}</div>`).join("") : `<div class="muted">Everything looks fine.</div>`}
+      <div class="facts">
+        <div class="fact"><small>Today</small><b>${pesoN(today(u).total)}</b></div>
+        <div class="fact"><small>Jobs today</small><b>${today(u).jobs}</b></div>
+        <div class="fact"><small>Pages today</small><b>${today(u).pages}</b></div>
+        <div class="fact"><small>Paper left${last}</small><b>${s.paper ?? "—"}</b></div>
+        <div class="fact"><small>Ink pad counter${last}</small><b>${s.pagesSinceService ?? "—"}</b></div>
+        <div class="fact"><small>Coin slot${last}</small><b style="font-size:14px">${esc(u.online ? (s.coinSlot || "—") : "Unknown")}</b></div>
+      </div>
+      ${u.online ? "" : `<div class="muted" style="font-size:13px">"Last known" = from the last report, ${esc(dt(s.at || u.last_seen))}. The machine is offline, so it may have changed.</div>`}
+      ${printers ? `<div class="table-wrap"><table><tr><th>Printer</th><th>Name</th><th>Status</th><th>Note</th></tr>${printers}</table></div>` : ""}
+    </div>
+
+    <div class="panel">
+      <h3>Last 14 days · ${peso(total14)}</h3>
+      <div class="bars" role="img" aria-label="Money kept per day, last 14 days">
+        ${days.map(x => `<div class="${x.c ? "" : "zero"}" style="height:${(x.c / max * 100).toFixed(1)}%" title="${x.d.toLocaleDateString("en-PH", { month: "short", day: "numeric" })}: ${peso(x.c)}"></div>`).join("")}
+      </div>
+      <div class="bar-labels">${days.map((x, i) => `<span>${i % 2 ? "" : x.d.getDate()}</span>`).join("")}</div>
+    </div>
+
+    <div class="panel"><h3>Sales</h3>
+      ${rows.length ? `<div class="table-wrap"><table>
+        <tr><th>When</th><th>Sale</th><th class="r">Pages</th><th>Status</th><th class="r">Price</th><th class="r">Kept</th><th class="r">Sukli</th></tr>
+        ${rows.slice(0, 100).map(r => `<tr><td>${esc(dt(r.at))}</td><td class="mono">${esc(r.sale_id)}</td><td class="r">${r.pages ?? ""}${r.color ? " · color" : ""}</td>
+          <td>${esc(r.status)}</td><td class="r">${peso(r.price_c)}</td><td class="r">${peso(r.paid_c)}</td><td class="r">${r.change_c ? peso(r.change_c) : ""}</td></tr>`).join("")}
+      </table></div>` : `<div class="muted">No sales in the last 14 days.</div>`}
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;align-items:center;gap:8px">
+        <h3 style="flex:1">Problems the app logged <span class="muted" style="font-weight:400">· last 7 days</span></h3>
+        ${(errs.data || []).length ? `<button class="btn" id="clrErr" type="button">Clear</button>
+          <button class="btn danger" id="clrErrSure" type="button" hidden>Yes, clear ${errs.data.length}</button>` : ""}
+      </div>
+      ${(errs.data || []).length ? `<div class="table-wrap"><table><tr><th>When</th><th>Where</th><th>What</th></tr>
+        ${errs.data.map(e => `<tr><td>${esc(dt(e.at))}</td><td>${esc(e.kind)}</td><td class="wrap-text">${esc(e.message)}</td></tr>`).join("")}</table></div>`
+        : `<div class="muted">Nothing logged.</div>`}
+    </div>
+
+    ${state.dev ? `
+    <form class="panel" id="unitForm">
+      <h3>Unit settings</h3>
+      <div class="form-row">
+        <label>Name <input id="uName" value="${esc(u.name || "")}" placeholder="${esc(s.name || "")}"></label>
+        <label>Location <input id="uLoc" value="${esc(u.location || "")}" placeholder="Brgy., city"></label>
+        <label>Shop <select id="uClient"><option value="">None</option>
+          ${state.clients.map(c => `<option value="${c.id}" ${c.id === u.client_id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
+        <label>Report every (minutes, empty = default) <input id="uMin" type="number" min="5" max="1440" value="${u.report_minutes ?? ""}"></label>
+      </div>
+      <div class="muted">License key: <span class="mono">${esc(u.license_key || "—")}</span></div>
+      <div class="act"><button class="btn primary" type="submit">Save</button>
+        <span style="flex:1"></span>
+        <button class="btn link-btn" type="button" id="delUnit">Delete unit</button></div>
+      <div class="msg" id="unitMsg"></div>
+      <div class="muted" style="font-size:13px">Delete removes this unit and its sales and errors from EzSoft. If the machine still runs with its license, it comes back as a new unit at its next report.</div>
+    </form>` : ""}
+
+    <div class="panel"><h3>License</h3>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="mono">${esc(mask(u.license_key))}</span>
+        <span class="pill ${licenseState(u).cls}">${esc(licenseState(u).text)}</span>
+        <span style="flex:1"></span>
+        <button class="btn" id="toLicenses" type="button">Licenses &amp; unbind</button>
+      </div>
+    </div>
+  `;
+  $("#closeSheet").onclick = closeSheet;
+  $("#pingBtn").addEventListener("click", () => ping(id));
+  $("#clrErr")?.addEventListener("click", () => { $("#clrErr").hidden = true; $("#clrErrSure").hidden = false; });
+  $("#clrErrSure")?.addEventListener("click", async () => {
+    $("#clrErrSure").disabled = true;
+    const { data, error } = await db.rpc("clear_unit_errors", { p_unit: id });
+    if (error || !data?.ok) { $("#clrErrSure").disabled = false; $("#clrErrSure").textContent = error?.message || "Couldn't clear"; return; }
+    openUnit(id);
+  });
+  resumePing(id);
+
+  if (state.dev) {
+    $("#delUnit").addEventListener("click", async e => {
+      if (!confirmStep(e.target, "Yes, delete unit and its sales")) return;
+      const { data, error } = await db.rpc("dev_delete_unit", { p_unit: id });
+      if (error || !data?.ok) return setMsg("unitMsg", error?.message || "Failed", "bad");
+      closeSheet(); await loadAll();
+    });
+    $("#unitForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const min = $("#uMin").value.trim();
+      const { error } = await db.from("units").update({
+        name: $("#uName").value.trim() || null, location: $("#uLoc").value.trim() || null,
+        client_id: $("#uClient").value || null, report_minutes: min ? Number(min) : null
+      }).eq("id", id);
+      setMsg("unitMsg", error ? error.message : "Saved.", error ? "bad" : "ok");
+      if (!error) { await loadAll(); }
+    });
+  }
+  $("#toLicenses").addEventListener("click", () => { closeSheet(); showTab("licenses"); });
+}
+
+// ───── Accounts ─────
+// Two-step buttons: first tap shows "Yes, …", second tap does it (back to normal after 6 s).
+function confirmStep(btn, label) {
+  if (btn.dataset.armed === "1") return true;
+  btn.dataset.armed = "1"; btn.dataset.label = btn.textContent; btn.textContent = label; btn.classList.add("danger");
+  setTimeout(() => { if (btn.isConnected && btn.dataset.armed === "1") { btn.dataset.armed = ""; btn.textContent = btn.dataset.label; btn.classList.remove("danger"); } }, 6000);
+  return false;
+}
+const ACC_WHY = { not_found: "No machine with that key yet (it must be activated and online once).", no_account: "Account not found.",
+  self: "You can't delete your own account.", developer: "Developer accounts can't be deleted here.", not_developer: "Developer only.",
+  no_name: "Type a shop name." };
+function renderAccounts() {
+  const list = [...state.profiles].sort((a, b) => (a.role === "developer" ? -1 : b.role === "developer" ? 1 : 0));
+  $("#accountsList").innerHTML = list.map(p => {
+    const dev = p.role === "developer";
+    const shop = state.clients.find(c => c.id === p.client_id);
+    const units = p.client_id ? state.units.filter(u => u.client_id === p.client_id) : [];
+    if (dev) return `<div class="acc"><section><div class="acc-head"><h3>${esc(p.display_name || "")}</h3><span class="pill ok">developer · sees everything</span></div></section></div>`;
+    return `<div class="acc" data-acc="${p.user_id}">
+      <section>
+        <div class="acc-head">
+          <div><h3>${esc(p.display_name || p.user_id)}</h3>
+            <div class="acc-shop">${shop ? esc(shop.name) + (shop.phone ? " · " + esc(shop.phone) : "") : `<span class="muted">No shop yet</span>`}</div></div>
+          <button class="btn small" data-edit>Edit shop</button>
+        </div>
+        <div class="acc-edit" hidden>
+          <input data-sname placeholder="Shop name" value="${esc(shop?.name || "")}">
+          <input data-sphone placeholder="Phone" value="${esc(shop?.phone || "")}">
+          <button class="btn primary small" data-save>Save</button>
+          <button class="btn small" data-cancel>Cancel</button>
+        </div>
+      </section>
+      <section>
+        <div class="acc-label">Licenses</div>
+        <div>${units.map(u => { const st = licenseState(u); return `<div class="lic-row">
+            <span class="mono" style="font-size:13px">••••${esc((u.license_key || "").slice(-4))}</span>
+            <span class="name">${esc(unitName(u))}</span>
+            <span class="pill ${st.cls}">${esc(st.text)}</span>
+            <button class="btn small" data-unlink="${u.id}">Remove</button></div>`; }).join("") || `<div class="muted">No licenses yet.</div>`}</div>
+        <div class="acc-add">
+          <input data-key placeholder="License key, e.g. EZP-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+          <button class="btn primary" data-assign>Add license</button>
+        </div>
+      </section>
+      <section>
+        <div class="acc-foot">
+          <button class="btn small link-btn" data-noaccess ${p.client_id ? "" : "disabled"}>Remove access</button>
+          <button class="btn small link-btn" data-delacc>Delete login</button>
+        </div>
+        <div class="msg"></div>
+      </section>
+    </div>`;
+  }).join("") || `<div class="empty">No accounts yet.</div>`;
+
+  document.querySelectorAll("[data-acc]").forEach(card => {
+    const uid = card.dataset.acc, msg = card.querySelector(".msg");
+    const say = (t, k) => { msg.textContent = t; msg.className = "msg " + k; };
+    const refresh = async () => { await loadAll(); renderAccounts(); };
+    const edit = card.querySelector(".acc-edit");
+    card.querySelector("[data-edit]").addEventListener("click", () => { edit.hidden = false; card.querySelector("[data-sname]").focus(); });
+    card.querySelector("[data-cancel]").addEventListener("click", () => { edit.hidden = true; });
+    card.querySelector("[data-save]").addEventListener("click", async () => {
+      const { data, error } = await db.rpc("dev_save_shop", { p_user: uid, p_name: card.querySelector("[data-sname]").value, p_phone: card.querySelector("[data-sphone]").value });
+      error || !data?.ok ? say(error?.message || ACC_WHY[data.reason] || data.reason, "bad") : refresh();
+    });
+    card.querySelector("[data-assign]").addEventListener("click", async e => {
+      const key = card.querySelector("[data-key]").value.trim();
+      if (key.length < 6) return say("Type the whole license key.", "bad");
+      const move = e.target.dataset.move === "1";
+      e.target.disabled = true;
+      const { data, error } = await db.rpc("dev_assign_unit", { p_key: key, p_user: uid, p_move: move });
+      e.target.disabled = false;
+      if (error) return say(error.message, "bad");
+      if (!data.ok && data.reason === "linked") {
+        e.target.dataset.move = "1"; e.target.textContent = "Yes, move it here"; e.target.classList.add("danger");
+        return say(`${data.unit} belongs to ${data.client || "another account"}. Tap again to move it here.`, "bad");
+      }
+      if (!data.ok) return say(ACC_WHY[data.reason] || data.reason, "bad");
+      refresh();
+    });
+    card.querySelectorAll("[data-unlink]").forEach(b => b.addEventListener("click", async () => {
+      if (!confirmStep(b, "Yes, remove")) return;
+      const { data, error } = await db.rpc("dev_unlink_unit", { p_unit: b.dataset.unlink });
+      error || !data?.ok ? say(error?.message || "Failed", "bad") : refresh();
+    }));
+    card.querySelector("[data-noaccess]").addEventListener("click", async e => {
+      if (!confirmStep(e.target, "Yes, remove access")) return;
+      const { error } = await db.from("profiles").update({ client_id: null }).eq("user_id", uid);
+      error ? say(error.message, "bad") : refresh();
+    });
+    card.querySelector("[data-delacc]").addEventListener("click", async e => {
+      if (!confirmStep(e.target, "Yes, delete login")) return;
+      const { data, error } = await db.rpc("dev_delete_account", { p_user: uid });
+      error || !data?.ok ? say(error?.message || ACC_WHY[data.reason] || data.reason, "bad") : refresh();
+    });
+  });
+}
+
+// ───── Ping ─────
+// The machine checks in every few minutes; a ping makes it send a full report at its next check-in.
+const pings = {};   // unit id -> { at, deadline }
+const noAnswer = {};   // unit id -> time of the ping it didn't answer
+function fmtLeft(sec) { const m = Math.floor(sec / 60), s2 = String(sec % 60).padStart(2, "0"); return `${m}:${s2}`; }
+async function ping(id) {
+  const { data, error } = await db.rpc("request_ping", { p_unit: id });
+  if (error) return showPing(id, error.message, "bad");
+  if (!data.ok && data.reason !== "wait") return showPing(id, data.reason === "not_yours" ? "This unit is not in your account." : data.reason, "bad");
+  const u = state.units.find(x => x.id === id);
+  const secs = data.pollSeconds || u?.poll_seconds || 300;
+  pings[id] = { at: new Date(data.at), deadline: new Date(new Date(data.at).getTime() + (secs + 45) * 1000), next: new Date(new Date(data.at).getTime() + secs * 1000) };
+  watchPing(id);
+}
+function resumePing(id) { if (pings[id]) watchPing(id); }
+function showPing(id, text, kind) {
+  if ($("#sheet").hidden || !$("#pingMsg")) return;
+  const el = $("#pingMsg"); el.hidden = false; el.textContent = text; el.className = "msg " + kind;
+}
+async function watchPing(id) {
+  const p = pings[id]; if (!p || p.watching) return;
+  p.watching = true;
+  try {
+    while (true) {
+      const left = Math.max(0, Math.round((p.next - Date.now()) / 1000));
+      const btn = $("#pingBtn");
+      if (btn) { btn.disabled = left > 0; btn.textContent = left > 0 ? `Ping again in ${fmtLeft(left)}` : "Ping"; }
+      if (!p.done) {
+        const { data } = await db.from("unit_overview").select("ping_answered_at,last_seen").eq("id", id).maybeSingle();
+        if (data?.ping_answered_at && new Date(data.ping_answered_at) >= p.at) {
+          p.done = true; const s = Math.round((new Date(data.ping_answered_at) - p.at) / 1000);
+          await loadAll();
+          // Show the fresh report (printer, paper, coin slot) in the open unit
+          if (!$("#sheet").hidden && $("#sheet").dataset.unit === id) await openUnit(id);
+          showPing(id, `Online · answered in ${s < 90 ? s + " seconds" : Math.round(s / 60) + " minutes"}. Status below is new.`, "ok");
+        } else if (Date.now() > p.deadline) {
+          p.done = true; noAnswer[id] = p.at;
+          await loadAll();
+          if (!$("#sheet").hidden && $("#sheet").dataset.unit === id) await openUnit(id);
+          showPing(id, "No answer. The machine is offline (or off, or without internet).", "bad");
+        } else {
+          const ps = state.units.find(x => x.id === id)?.poll_seconds || 300;
+          showPing(id, `Waiting for the machine… it checks in every ${ps < 120 ? "minute" : Math.round(ps / 60) + " minutes"}.`, "");
+        }
+      }
+      if (left === 0 && p.done) { if (btn) { btn.disabled = false; btn.textContent = "Ping"; } delete pings[id]; break; }
+      await new Promise(r => setTimeout(r, p.done ? 1000 : 5000));
+    }
+  } finally { p.watching = false; }
+}
+
+// ───── Licenses ─────
+const mask = k => !k ? "—" : k.length <= 4 ? k : k.slice(0, -4).replace(/[A-Za-z0-9]/g, "•") + k.slice(-4);
+function licenseState(u) {
+  const last = (state.unbinds || []).find(r => r.unit_id === u.id && ["pending", "locked", "done"].includes(r.status));
+  if (last?.status === "locked" || last?.status === "done" || u.status?.license === "Unbound") return { key: "unbound", text: last?.status === "locked" ? "Locked · key not freed yet" : "Unbound", cls: "off" };
+  if (last?.status === "pending") return { key: u.online ? "online" : "offline", text: "Unbinding…", cls: "warn" };
+  if (u.online) return { key: "online", text: "Online", cls: "ok" };
+  const days = u.last_contact ? (Date.now() - new Date(u.last_contact)) / 86400000 : 999;
+  if (days >= 7) return { key: "long", text: u.last_contact ? `Offline ${Math.floor(days)} days` : "Never online", cls: "bad" };
+  return { key: "offline", text: "Offline", cls: "warn" };
+}
+const UB_WHY = { offline: "The machine is offline. Turn it on with internet first.", open: "A request is already open.",
+  not_yours: "This license is not in your account.", too_late: "The machine already locked itself.", not_developer: "Developer only." };
+function openRequest(u) { return (state.unbinds || []).find(r => r.unit_id === u.id && (r.status === "pending" || r.status === "locked")); }
+function licenseActions(u) {
+  const r = openRequest(u);
+  if (r?.status === "pending") return `<div class="muted" style="font-size:13px">Unbind requested ${esc(ago(r.created_at))}. Waiting for the machine to lock itself.</div>
+      <div class="act"><button class="btn" data-act="cancel" data-id="${r.id}">Cancel request</button>
+      ${state.dev ? `<button class="btn danger" data-act="reject" data-id="${r.id}">Reject</button>` : ""}</div>`;
+  if (r?.status === "locked") return state.dev
+    ? `<div class="muted" style="font-size:13px">Machine locked ${esc(ago(r.locked_at))}. Clear <b>deviceId</b> of this key in Firebase, then:</div>
+       <div class="act"><button class="btn primary" data-act="done" data-unit="${u.id}">Done (deviceId cleared)</button></div>`
+    : `<div class="muted" style="font-size:13px">Machine locked. Waiting for the developer to free the key.</div>`;
+  if (licenseState(u).key === "unbound") return `<span class="muted" style="font-size:13px">—</span>`;
+  const req = u.online
+    ? `<button class="btn" data-act="ask" data-unit="${u.id}">Request unbind</button>
+       <button class="btn danger" data-act="request" data-unit="${u.id}" hidden>Yes, lock this machine</button>`
+    : `<span class="muted" style="font-size:13px">${state.dev ? "Offline" : "Offline · contact the developer"}</span>`;
+  const dev = state.dev ? ` <button class="btn" data-act="askoff" data-unit="${u.id}">Unbind offline…</button>
+       <button class="btn danger" data-act="offline" data-unit="${u.id}" hidden>Yes, I cleared deviceId in Firebase</button>` : "";
+  return `<div class="act">${req}${dev}</div>`;
+}
+function renderLicenses() {
+  const list = state.units.filter(u => u.product === "ezprint" && u.license_key);
+  const f = $("#licFilter").value;
+  const rows = list.map(u => ({ u, st: licenseState(u) }))
+    .filter(x => f === "all" || x.st.key === f || (f === "offline" && x.st.key === "long"));
+  const count = k => list.filter(u => licenseState(u).key === k).length;
+  const open = list.filter(u => openRequest(u)).length;
+  $("#licSummary").textContent = `${list.length} license${list.length === 1 ? "" : "s"} · ${count("online")} online · ${count("long")} offline 7+ days${open ? ` · ${open} unbind request${open === 1 ? "" : "s"}` : ""}`;
+  $("#licTable").innerHTML = `<tr><th>License key</th><th>Unit</th>${state.dev ? "<th>Client</th>" : ""}<th>Last online</th><th>Status</th><th>Unbind</th></tr>` +
+    (rows.map(({ u, st }) => `<tr>
+      <td><span class="mono" data-key="${esc(u.license_key)}" data-shown="0">${esc(mask(u.license_key))}</span>
+        <button class="btn" data-eye style="padding:3px 8px;margin-left:6px" aria-label="Show key"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+      <td>${esc(unitName(u))}<div class="muted mono" style="font-size:12px">${esc(u.device_id)}</div></td>
+      ${state.dev ? `<td>${esc(clientName(u.client_id) || "—")}</td>` : ""}
+      <td>${u.online ? "now" : esc(ago(u.last_contact))}<div class="muted" style="font-size:12px">${esc(dt(u.last_contact))}</div></td>
+      <td><span class="pill ${st.cls}">${esc(st.text)}</span></td>
+      <td style="white-space:normal;width:230px;min-width:210px">${licenseActions(u)}<div class="msg" data-msg="${u.id}"></div></td></tr>`).join("")
+      || `<tr><td colspan="6" class="muted">${list.length ? "No licenses match." : "No licenses yet. A license shows here after its machine is activated and online once."}</td></tr>`);
+  document.querySelectorAll("[data-eye]").forEach(b => b.addEventListener("click", () => {
+    const k = b.previousElementSibling, shown = k.dataset.shown === "1";
+    k.textContent = shown ? mask(k.dataset.key) : k.dataset.key; k.dataset.shown = shown ? "0" : "1";
+    b.setAttribute("aria-label", shown ? "Show key" : "Hide key");
+  }));
+  const msgFor = b => b.closest("td").querySelector(".msg");
+  const say = (b, t, k) => { const m = msgFor(b); m.textContent = t; m.className = "msg " + k; };
+  document.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", async () => {
+    const act = b.dataset.act;
+    if (act === "ask" || act === "askoff") {
+      b.hidden = true; b.parentElement.querySelector(`[data-act="${act === "ask" ? "request" : "offline"}"]`).hidden = false;
+      return say(b, act === "ask" ? "Stops taking customers until activated again." : "Only after you emptied deviceId in Firebase.", "bad");
+    }
+    b.disabled = true;
+    let res;
+    if (act === "request") res = await db.rpc("request_unbind", { p_unit: b.dataset.unit, p_reason: "" });
+    if (act === "cancel") res = await db.rpc("cancel_unbind", { p_id: b.dataset.id });
+    if (act === "offline" || act === "done") res = await db.rpc("dev_mark_unbound", { p_unit: b.dataset.unit, p_reason: act === "offline" ? "Unbound by developer" : "" });
+    if (act === "reject") res = await db.from("unbind_requests").update({ status: "rejected", decided_at: new Date().toISOString(), decided_by: state.me.id }).eq("id", b.dataset.id).then(r => ({ data: r.error ? null : { ok: true }, error: r.error }));
+    if (res.error || !res.data?.ok) { b.disabled = false; return say(b, res.error?.message || UB_WHY[res.data?.reason] || res.data?.reason || "Failed", "bad"); }
+    await loadAll();
+  }));
+}
+$("#licFilter").addEventListener("change", renderLicenses);
+
+// ───── Add unit (license key) ─────
+$("#addUnitBtn").addEventListener("click", () => { $("#addUnitForm").hidden = false; $("#addKey").focus(); });
+$("#addCancel").addEventListener("click", () => { $("#addUnitForm").hidden = true; setMsg("addMsg", ""); });
+$("#addUnitForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const key = $("#addKey").value.trim();
+  if (key.length < 6) return setMsg("addMsg", "Type the whole license key.", "bad");
+  setMsg("addMsg", "Checking…");
+  const code = $("#addCode").value.trim();
+  if (code.replace(/[^A-Za-z0-9]/g, "").length !== 8) return setMsg("addMsg", "Type the 8-character EzSoft code from the machine (Admin › License).", "bad");
+  const btn = $("#addUnitForm button[type=submit]");
+  if (btn.disabled) return;
+  btn.disabled = true;   // one try per tap (tries are limited per hour)
+  let data, error;
+  try { ({ data, error } = await db.rpc("claim_unit", { p_key: key, p_code: code })); }
+  finally { btn.disabled = false; }
+  if (error) return setMsg("addMsg", error.message, "bad");
+  const why = { not_found: "No machine with that key yet. Turn the machine on with internet, wait 2 minutes, then try again.",
+    taken: "That machine is linked to another account. Contact the developer.", too_many: "Too many tries. Wait an hour and try again.",
+    bad_code: "Wrong or old EzSoft code. Look at Admin › License on the machine again (it changes every 10 minutes).",
+    no_code: "This machine has no EzSoft code yet. Update EzPrint Pro on it, keep it online 2 minutes, then try again.",
+    login: "Log in again." };
+  if (!data.ok) return setMsg("addMsg", why[data.reason] || data.reason, "bad");
+  setMsg("addMsg", data.already ? `${data.unit} is already in your account.` : `Added ${data.unit}.`, "ok");
+  $("#addKey").value = ""; $("#addCode").value = "";
+  await loadAll();
+});
+
+renderDownloads($("#dlPublic"));
+boot();
+</script>
+</body>
+</html>
