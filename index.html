@@ -695,20 +695,24 @@ function renderUnits() {
 }
 
 // ───── EzPC shops ─────
-// status: { name, at, earnings: {today,week,month,all:{pesos,coins}, series:[{d,p,c}]}, pcs: {id: {timeLeft, version, at}} }
-const pcFresh = (pc) => pc?.at && (Date.now() - new Date(pc.at)) < 75 * 60000;   // reported in the last 75 min
-function pcList(u) { return Object.entries(u.status?.pcs || {}).map(([id, p]) => ({ id, ...p })).sort((a, b) => a.id.localeCompare(b.id)); }
+// status: { name, at, earnings: {today,week,month,all:{pesos,coins}, series:[{d,p,c}]} }  (sent once a day, or on Ping)
+// pcs_seen: { pcId: { seen, version } }  (every PC checks in every few minutes)
+function pcList(u) {
+  const limit = (2 * (u.poll_seconds || 300) + 30) * 1000;
+  return Object.entries(u.pcs_seen || {}).map(([id, p]) => ({ id, version: p?.version || "", seen: p?.seen,
+    on: !!p?.seen && (Date.now() - new Date(p.seen)) < limit })).sort((a, b) => a.id.localeCompare(b.id));
+}
 function earn(u, k) { const s = u.status || {}; return Number(s.earnings?.[k]?.pesos || 0); }
 
 function renderPcs() {
   const all = state.units.filter(u => u.product === "ezpc");
   const online = all.filter(u => u.online).length;
   const todayTotal = all.reduce((t, u) => t + today(u).total, 0);
-  const pcsOn = all.reduce((t, u) => t + pcList(u).filter(pcFresh).length, 0);
+  const pcsOn = all.reduce((t, u) => t + pcList(u).filter(p => p.on).length, 0);
   $("#pcSummary").innerHTML = `
     <div class="stat"><span>Shops</span><b>${all.length}</b></div>
     <div class="stat"><span>Online</span><b style="color:var(--ok)">${online}</b></div>
-    <div class="stat"><span>PCs reporting</span><b>${pcsOn}</b></div>
+    <div class="stat"><span>PCs on</span><b>${pcsOn}</b></div>
     <div class="stat"><span>Sales today</span><b>${pesoN(todayTotal)}</b></div>`;
   if (!all.length) {
     $("#pcUnits").innerHTML = `<div class="empty" style="grid-column:1/-1">${state.dev
@@ -717,7 +721,7 @@ function renderPcs() {
     return;
   }
   $("#pcUnits").innerHTML = all.map(u => {
-    const pcs = pcList(u), on = pcs.filter(pcFresh).length;
+    const pcs = pcList(u), on = pcs.filter(p => p.on).length;
     return `<button class="card ${u.online ? "" : "offline"}" data-pcunit="${esc(u.id)}">
       <div class="card-head">
         <div><h3>${esc(unitName(u))}</h3>
@@ -748,8 +752,12 @@ function openPcUnit(id) {
       <div class="muted mono">Unit ${esc(u.device_id)} · EZPC v${esc(u.app_version || "?")}</div></div>
       <button class="btn" id="closeSheet">Close</button></div>
     <div class="panel">
-      <div style="display:flex;gap:8px;align-items:center">${u.online ? `<span class="pill ok">Online</span>` : `<span class="pill off">Offline</span>`}
-        <span class="muted">Last report ${esc(ago(u.last_seen))}${s.at ? " · sales as of " + esc(dt(s.at)) : ""}</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${u.online ? `<span class="pill ok">Online</span>` : `<span class="pill off">Offline</span>`}
+        <span class="muted">Sales as of ${s.at ? esc(dt(s.at)) + " (" + esc(ago(u.last_seen)) + ")" : "—"}</span>
+        <span class="grow" style="flex:1"></span>
+        <button class="btn" id="pingBtn" type="button">Ping</button></div>
+      <div class="msg" id="pingMsg" hidden></div>
+      <div class="muted" style="font-size:13px">Sales are sent once a day. Press Ping for the latest (one PC answers within ${Math.round((u.poll_seconds || 300) / 60)} minutes).</div>
       <div class="facts">
         <div class="fact"><small>Today</small><b>${pesoN(today(u).total)}</b></div>
         <div class="fact"><small>This week</small><b>${pesoN(earn(u, "week"))}</b></div>
@@ -767,15 +775,18 @@ function openPcUnit(id) {
       : `<div class="muted">No daily sales yet.</div>`}
     </div>
     <div class="panel"><h3>PCs</h3>
-      ${pcs.length ? `<div class="table-wrap"><table><tr><th>PC</th><th>Status</th><th class="r">Time left (at report)</th><th>Version</th><th>Last report</th></tr>
+      ${pcs.length ? `<div class="table-wrap"><table><tr><th>PC</th><th>Status</th><th>Version</th><th>Last check-in</th></tr>
         ${pcs.map(p => `<tr><td class="mono">${esc(p.id)}</td>
-          <td>${pcFresh(p) ? (Number(p.timeLeft) > 0 ? `<span class="pill ok">In use</span>` : `<span class="pill">Free</span>`) : `<span class="pill off">Off</span>`}</td>
-          <td class="r">${pcFresh(p) && Number(p.timeLeft) > 0 ? fmtLeft(Number(p.timeLeft)) : ""}</td>
-          <td>${esc(p.version || "")}</td><td>${esc(ago(p.at))}</td></tr>`).join("")}
-      </table></div>` : `<div class="muted">No PC has reported yet.</div>`}
+          <td>${p.on ? `<span class="pill ok">On</span>` : `<span class="pill off">Off</span>`}</td>
+          <td>${esc(p.version)}</td><td>${esc(ago(p.seen))}</td></tr>`).join("")}
+      </table></div>` : `<div class="muted">No PC has checked in yet.</div>`}
     </div>`;
   $("#closeSheet").onclick = closeSheet;
+  $("#pingBtn").addEventListener("click", () => ping(id));
+  resumePing(id);
 }
+// Re-open the right sheet (EzPrint or EzPC) after a ping.
+const reopenUnit = id => state.units.find(x => x.id === id)?.product === "ezpc" ? openPcUnit(id) : openUnit(id);
 
 // Add an EzPC shop: same check as EzPrint (key + EzSoft code from the PC's screen).
 $("#pcAddBtn").addEventListener("click", () => { $("#pcAddForm").hidden = false; $("#pcAddKey").focus(); });
@@ -1082,12 +1093,12 @@ async function watchPing(id) {
           p.done = true; const s = Math.round((new Date(data.ping_answered_at) - p.at) / 1000);
           await loadAll();
           // Show the fresh report (printer, paper, coin slot) in the open unit
-          if (!$("#sheet").hidden && $("#sheet").dataset.unit === id) await openUnit(id);
+          if (!$("#sheet").hidden && $("#sheet").dataset.unit === id) await reopenUnit(id);
           showPing(id, `Online · answered in ${s < 90 ? s + " seconds" : Math.round(s / 60) + " minutes"}. Status below is new.`, "ok");
         } else if (Date.now() > p.deadline) {
           p.done = true; noAnswer[id] = p.at;
           await loadAll();
-          if (!$("#sheet").hidden && $("#sheet").dataset.unit === id) await openUnit(id);
+          if (!$("#sheet").hidden && $("#sheet").dataset.unit === id) await reopenUnit(id);
           showPing(id, "No answer. The machine is offline (or off, or without internet).", "bad");
         } else {
           const ps = state.units.find(x => x.id === id)?.poll_seconds || 300;
