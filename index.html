@@ -351,10 +351,9 @@ td.wrap-text { white-space: normal; min-width: 220px; }
       </div>
       <form class="panel" id="addUnitForm" hidden>
         <h3>Add a unit to your account</h3>
-        <p class="muted" style="margin:0">On the machine, open <b>Admin › License</b>. Type the <b>license key</b> and the <b>EzSoft code</b> shown there (the code changes every 10 minutes). The machine must be on and online.</p>
+        <p class="muted" style="margin:0">Type the machine's <b>license key</b> (Admin › License). The machine must have been online once. A unit can only be in one account: the first to add it keeps it.</p>
         <div class="toolbar">
           <input id="addKey" placeholder="License key  EZP-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" style="max-width:340px;font-family:var(--f-mono)">
-          <input id="addCode" placeholder="EzSoft code  XXXX-XXXX" autocomplete="off" spellcheck="false" maxlength="12" style="max-width:220px;font-family:var(--f-mono);text-transform:uppercase">
           <button class="btn primary" type="submit">Add</button>
           <button class="btn" type="button" id="addCancel">Cancel</button>
         </div>
@@ -373,10 +372,9 @@ td.wrap-text { white-space: normal; min-width: 220px; }
       </div>
       <form class="panel" id="pcAddForm" hidden>
         <h3>Add an EzPC shop to your account</h3>
-        <p class="muted" style="margin:0">On any EZPC, open <b>Admin › Online Sales</b>. Type the <b>EZPC key</b> saved there and the <b>EzSoft code</b> shown below it (it changes every 10 minutes). The PC must be on and online.</p>
+        <p class="muted" style="margin:0">Type any <b>EZPC key</b> of the shop that is saved in <b>Admin › Online Sales</b> on a PC. That PC must have been online once. A shop can only be in one account: the first to add it keeps it.</p>
         <div class="toolbar">
           <input id="pcAddKey" placeholder="EZPC key" autocomplete="off" spellcheck="false" style="max-width:300px;font-family:var(--f-mono);text-transform:uppercase">
-          <input id="pcAddCode" placeholder="EzSoft code  XXXX-XXXX" autocomplete="off" spellcheck="false" maxlength="12" style="max-width:220px;font-family:var(--f-mono);text-transform:uppercase">
           <button class="btn primary" type="submit">Add</button>
           <button class="btn" type="button" id="pcAddCancel">Cancel</button>
         </div>
@@ -389,7 +387,7 @@ td.wrap-text { white-space: normal; min-width: 220px; }
 
     <!-- Accounts (developer) -->
     <section id="tab-accounts" hidden style="display:grid;gap:16px">
-      <p class="muted" style="margin:0">A new account sees nothing until it has a license. Add one here, or the owner adds it with the EzSoft code from the machine.</p>
+      <p class="muted" style="margin:0">A new account sees nothing until it has a license. Add one here, or the owner adds it with the machine's license key.</p>
       <div class="acc-list" id="accountsList"></div>
     </section>
 
@@ -788,26 +786,24 @@ function openPcUnit(id) {
 // Re-open the right sheet (EzPrint or EzPC) after a ping.
 const reopenUnit = id => state.units.find(x => x.id === id)?.product === "ezpc" ? openPcUnit(id) : openUnit(id);
 
-// Add an EzPC shop: same check as EzPrint (key + EzSoft code from the PC's screen).
+// Add an EzPC shop with one of its EZPC keys (first account to add it keeps it).
 $("#pcAddBtn").addEventListener("click", () => { $("#pcAddForm").hidden = false; $("#pcAddKey").focus(); });
 $("#pcAddCancel").addEventListener("click", () => { $("#pcAddForm").hidden = true; setMsg("pcAddMsg", ""); });
 $("#pcAddForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const key = $("#pcAddKey").value.trim().toUpperCase(), code = $("#pcAddCode").value.trim();
+  const key = $("#pcAddKey").value.trim().toUpperCase();
   if (key.length < 6) return setMsg("pcAddMsg", "Type the whole EZPC key.", "bad");
-  if (code.replace(/[^A-Za-z0-9]/g, "").length !== 8) return setMsg("pcAddMsg", "Type the 8-character EzSoft code from Admin › Online Sales.", "bad");
   const btn = $("#pcAddForm button[type=submit]"); if (btn.disabled) return;
   btn.disabled = true; setMsg("pcAddMsg", "Checking…");
   let data, error;
-  try { ({ data, error } = await db.rpc("claim_unit", { p_key: key, p_code: code })); } finally { btn.disabled = false; }
+  try { ({ data, error } = await db.rpc("claim_unit", { p_key: key })); } finally { btn.disabled = false; }
   if (error) return setMsg("pcAddMsg", error.message, "bad");
   const why = { not_found: "No shop with that key yet. Save the key in Admin › Online Sales, wait for Connected, then try again.",
     taken: "That shop is linked to another account. Contact the developer.", too_many: "Too many tries. Wait an hour and try again.",
-    bad_code: "Wrong or old EzSoft code. Look at Admin › Online Sales again (it changes every 10 minutes).",
-    no_code: "No EzSoft code yet. Keep the PC online 2 minutes, then try again.", login: "Log in again." };
+    login: "Log in again." };
   if (!data.ok) return setMsg("pcAddMsg", why[data.reason] || data.reason, "bad");
   setMsg("pcAddMsg", data.already ? `${data.unit} is already in your account.` : `Added ${data.unit}.`, "ok");
-  $("#pcAddKey").value = ""; $("#pcAddCode").value = "";
+  $("#pcAddKey").value = "";
   await loadAll();
 });
 
@@ -1194,23 +1190,19 @@ $("#addUnitForm").addEventListener("submit", async e => {
   const key = $("#addKey").value.trim();
   if (key.length < 6) return setMsg("addMsg", "Type the whole license key.", "bad");
   setMsg("addMsg", "Checking…");
-  const code = $("#addCode").value.trim();
-  if (code.replace(/[^A-Za-z0-9]/g, "").length !== 8) return setMsg("addMsg", "Type the 8-character EzSoft code from the machine (Admin › License).", "bad");
   const btn = $("#addUnitForm button[type=submit]");
   if (btn.disabled) return;
   btn.disabled = true;   // one try per tap (tries are limited per hour)
   let data, error;
-  try { ({ data, error } = await db.rpc("claim_unit", { p_key: key, p_code: code })); }
+  try { ({ data, error } = await db.rpc("claim_unit", { p_key: key })); }
   finally { btn.disabled = false; }
   if (error) return setMsg("addMsg", error.message, "bad");
   const why = { not_found: "No machine with that key yet. Turn the machine on with internet, wait 2 minutes, then try again.",
     taken: "That machine is linked to another account. Contact the developer.", too_many: "Too many tries. Wait an hour and try again.",
-    bad_code: "Wrong or old EzSoft code. Look at Admin › License on the machine again (it changes every 10 minutes).",
-    no_code: "This machine has no EzSoft code yet. Update EzPrint Pro on it, keep it online 2 minutes, then try again.",
     login: "Log in again." };
   if (!data.ok) return setMsg("addMsg", why[data.reason] || data.reason, "bad");
   setMsg("addMsg", data.already ? `${data.unit} is already in your account.` : `Added ${data.unit}.`, "ok");
-  $("#addKey").value = ""; $("#addCode").value = "";
+  $("#addKey").value = "";
   await loadAll();
 });
 
