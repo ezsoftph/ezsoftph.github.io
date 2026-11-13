@@ -416,7 +416,7 @@ td.wrap-text { white-space: normal; min-width: 220px; }
           <option value="online">Online</option>
           <option value="offline">Offline</option>
           <option value="long">Offline 7 days or more</option>
-          <option value="unbound">Locked / unbound</option>
+          <option value="unbound">Not in use</option>
         </select>
         <span class="grow"></span>
         <span class="muted" id="licSummary" style="font-size:14px"></span>
@@ -538,7 +538,7 @@ const HEADS = {
   home: ["Home", "Your EzSoft products."], units: ["EzPrint Pro", "Every EzPrint Pro machine, live."],
   pcs: ["EzPC", "Every EzPC shop: sales and PCs, live."],
   clients: ["Clients", "The shops that own your units."], accounts: ["Accounts", "Each login, its shop and its licenses."],
-  unbind: ["Unbind requests", "Moving a license to a new coin slot."], licenses: ["Licenses", "Every EzPrint Pro license, when it was last online, and unbind requests."], downloads: ["Downloads", "Apps, installers and firmware."]
+  unbind: ["Unbind requests", "Moving a license to a new coin slot."], licenses: ["Licenses", "Every EzPrint Pro license and when it was last online. Unbind frees a key for a new machine."], downloads: ["Downloads", "Apps, installers and firmware."]
 };
 function showTab(name) {
   document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === name));
@@ -610,7 +610,7 @@ async function loadAll() {
     db.from("unit_overview").select("*").order("created_at"),
     db.from("clients").select("*").order("name"),
     state.dev ? db.from("profiles").select("*").order("created_at") : Promise.resolve({ data: [] }),
-    db.from("unbind_requests").select("id,unit_id,status,created_at,locked_at,reason").order("created_at", { ascending: false }).limit(500)
+    db.from("unbind_requests").select("id,unit_id,status,created_at,locked_at,reason,firebase_cleared,pc_id").order("created_at", { ascending: false }).limit(500)
   ]);
   if (u.error) { $("#units").innerHTML = `<div class="empty">Couldn't load units: ${esc(u.error.message)}</div>`; return; }
   state.units = (u.data || []).map(x => {
@@ -715,8 +715,12 @@ function renderUnits() {
 // pcs_seen: { pcId: { seen, version } }  (every PC checks in every few minutes)
 function pcList(u) {
   const limit = (2 * (u.poll_seconds || 300) + 30) * 1000;
-  return Object.entries(u.pcs_seen || {}).map(([id, p]) => ({ id, version: p?.version || "", seen: p?.seen,
-    on: !!p?.seen && (Date.now() - new Date(p.seen)) < limit })).sort((a, b) => a.id.localeCompare(b.id));
+  return Object.entries(u.pcs_seen || {}).map(([id, p]) => {
+    // Unbound and not seen since: "Not in use". If it checks in again, it is back in the list as On.
+    const unbound = !!p?.unbound && (!p?.seen || new Date(p.seen) <= new Date(p.unbound));
+    return { id, version: p?.version || "", seen: p?.seen, unbound, tablet: id.startsWith("TAB-"),
+      on: !unbound && !!p?.seen && (Date.now() - new Date(p.seen)) < limit };
+  }).sort((a, b) => (a.tablet - b.tablet) || a.id.localeCompare(b.id));
 }
 function earn(u, k) { const s = u.status || {}; return Number(s.earnings?.[k]?.pesos || 0); }
 
@@ -790,16 +794,21 @@ function openPcUnit(id) {
       <div class="bar-labels">${series.map((x, i) => `<span>${i % 2 ? "" : esc(String(x.d).split(" ").pop())}</span>`).join("")}</div>`
       : `<div class="muted">No daily sales yet.</div>`}
     </div>
-    <div class="panel"><h3>PCs</h3>
-      ${pcs.length ? `<div class="table-wrap"><table><tr><th>PC</th><th>Status</th><th>Version</th><th>Last check-in</th></tr>
-        ${pcs.map(p => `<tr><td class="mono">${esc(p.id)}</td>
-          <td>${p.on ? `<span class="pill ok">On</span>` : `<span class="pill off">Off</span>`}</td>
-          <td>${esc(p.version)}</td><td>${esc(ago(p.seen))}</td></tr>`).join("")}
-      </table></div>` : `<div class="muted">No PC has checked in yet.</div>`}
+    <div class="panel"><h3>PCs and tablets</h3>
+      ${pcs.length ? `<div class="table-wrap"><table id="pcTable"><tr><th>Device</th><th>Status</th><th>Version</th><th>Last check-in</th><th>License</th></tr>
+        ${pcs.map(p => `<tr><td><span class="mono">${esc(p.id)}</span><div class="muted" style="font-size:12px">${p.tablet ? "Tablet" : "PC"}</div></td>
+          <td>${p.unbound ? `<span class="pill off">Not in use</span>` : p.on ? `<span class="pill ok">On</span>` : `<span class="pill off">Off</span>`}</td>
+          <td>${esc(p.version)}</td><td>${esc(ago(p.seen))}</td>
+          <td style="white-space:normal;min-width:170px">${p.unbound ? `<span class="muted" style="font-size:13px">—</span>`
+            : unbindButton(`data-unit="${esc(u.id)}" data-pc="${esc(p.id)}"`)}<div class="msg"></div></td></tr>`).join("")}
+      </table></div>
+      <div class="muted" style="font-size:13px">Unbind frees that device's license for another PC or tablet. A PC's seat frees at the coin unit's daily check (or press "Check licenses now" in its portal).</div>`
+      : `<div class="muted">No PC or tablet has checked in yet.</div>`}
     </div>`;
   $("#closeSheet").onclick = closeSheet;
   $("#pingBtn").addEventListener("click", () => ping(id));
   resumePing(id);
+  if ($("#pcTable")) wireUnbind($("#pcTable"), () => openPcUnit(id));
 }
 // Re-open the right sheet (EzPrint or EzPC) after a ping.
 const reopenUnit = id => state.units.find(x => x.id === id)?.product === "ezpc" ? openPcUnit(id) : openUnit(id);
@@ -1128,34 +1137,56 @@ async function watchPing(id) {
 // ───── Licenses ─────
 const mask = k => !k ? "—" : k.length <= 4 ? k : k.slice(0, -4).replace(/[A-Za-z0-9]/g, "•") + k.slice(-4);
 function licenseState(u) {
-  const last = (state.unbinds || []).find(r => r.unit_id === u.id && ["pending", "locked", "done"].includes(r.status));
-  if (last?.status === "locked" || last?.status === "done" || u.status?.license === "Unbound") return { key: "unbound", text: last?.status === "locked" ? "Locked · key not freed yet" : "Unbound", cls: "off" };
-  if (last?.status === "pending") return { key: u.online ? "online" : "offline", text: "Unbinding…", cls: "warn" };
+  if (isUnbound(u)) return { key: "unbound", text: "Not in use", cls: "off" };
   if (u.online) return { key: "online", text: "Online", cls: "ok" };
   const days = u.last_contact ? (Date.now() - new Date(u.last_contact)) / 86400000 : 999;
   if (days >= 7) return { key: "long", text: u.last_contact ? `Offline ${Math.floor(days)} days` : "Never online", cls: "bad" };
   return { key: "offline", text: "Offline", cls: "warn" };
 }
-const UB_WHY = { offline: "The machine is offline. Turn it on with internet first.", open: "A request is already open.",
-  not_yours: "This license is not in your account.", too_late: "The machine already locked itself.", not_developer: "Developer only." };
-function openRequest(u) { return (state.unbinds || []).find(r => r.unit_id === u.id && (r.status === "pending" || r.status === "locked")); }
+// Unbound from the website (key freed in Firebase), unless this same machine was activated again since.
+function isUnbound(u) {
+  if (u.status?.license === "Unbound") return true;
+  const r = (state.unbinds || []).find(x => x.unit_id === u.id && !x.pc_id && (x.firebase_cleared || x.status === "done"));
+  if (!r) return false;
+  return !(u.status?.license === "Active" && u.last_seen && new Date(u.last_seen) > new Date(r.created_at));
+}
+// One-button unbind (Edge Function license-unbind): frees the key in Firebase at once.
+const UB_WHY = { not_yours: "This license is not in your account.", login: "Log in again.",
+  not_set_up: "Unbind isn't switched on yet (the developer must finish its setup).",
+  firebase: "The license server didn't answer. Try again in a minute.", busy: "The license changed just now. Try again.",
+  moved: "This key is already used by another machine.", not_found: "Not found. Refresh the page.",
+  no_key: "This unit has no license key yet.", server: "Something went wrong. Try again." };
+async function unbind(unit, pc) {
+  const { data, error } = await db.functions.invoke("license-unbind", { body: { unit, pc: pc || undefined } });
+  if (error) return { ok: false, text: "Couldn't reach EzSoft. Check your internet and try again." };
+  if (!data?.ok) return { ok: false, text: data?.reason === "wait"
+    ? `Unbinding is once a week per key. Next: ${dt(data.nextAt)}.` : (UB_WHY[data?.reason] || data?.reason || "Failed") };
+  return { ok: true };
+}
+// The button, then "Yes, unbind" in its place (no pop-ups).
+function unbindButton(attrs) {
+  return `<div class="act"><button class="btn" data-ub="ask" ${attrs}>Unbind</button>
+    <button class="btn danger" data-ub="yes" ${attrs} hidden>Yes, unbind</button></div>`;
+}
+function wireUnbind(root, after) {
+  root.querySelectorAll("[data-ub]").forEach(b => b.addEventListener("click", async () => {
+    const cell = b.closest("td") || b.parentElement.parentElement;
+    const m = cell.querySelector(".msg");
+    const say = (t, k) => { if (m) { m.textContent = t; m.className = "msg " + k; } };
+    if (b.dataset.ub === "ask") {
+      b.hidden = true; b.parentElement.querySelector('[data-ub="yes"]').hidden = false;
+      return say("The key is freed right away. This machine stops at its next online check.", "");
+    }
+    b.disabled = true; say("Unbinding…", "");
+    const r = await unbind(b.dataset.unit, b.dataset.pc);
+    if (!r.ok) { b.disabled = false; return say(r.text, "bad"); }
+    say("Unbound.", "ok");
+    await loadAll(); after?.();
+  }));
+}
 function licenseActions(u) {
-  const r = openRequest(u);
-  if (r?.status === "pending") return `<div class="muted" style="font-size:13px">Unbind requested ${esc(ago(r.created_at))}. Waiting for the machine to lock itself.</div>
-      <div class="act"><button class="btn" data-act="cancel" data-id="${r.id}">Cancel request</button>
-      ${state.dev ? `<button class="btn danger" data-act="reject" data-id="${r.id}">Reject</button>` : ""}</div>`;
-  if (r?.status === "locked") return state.dev
-    ? `<div class="muted" style="font-size:13px">Machine locked ${esc(ago(r.locked_at))}. Clear <b>deviceId</b> of this key in Firebase, then:</div>
-       <div class="act"><button class="btn primary" data-act="done" data-unit="${u.id}">Done (deviceId cleared)</button></div>`
-    : `<div class="muted" style="font-size:13px">Machine locked. Waiting for the developer to free the key.</div>`;
   if (licenseState(u).key === "unbound") return `<span class="muted" style="font-size:13px">—</span>`;
-  const req = u.online
-    ? `<button class="btn" data-act="ask" data-unit="${u.id}">Request unbind</button>
-       <button class="btn danger" data-act="request" data-unit="${u.id}" hidden>Yes, lock this machine</button>`
-    : `<span class="muted" style="font-size:13px">${state.dev ? "Offline" : "Offline · contact the developer"}</span>`;
-  const dev = state.dev ? ` <button class="btn" data-act="askoff" data-unit="${u.id}">Unbind offline…</button>
-       <button class="btn danger" data-act="offline" data-unit="${u.id}" hidden>Yes, I cleared deviceId in Firebase</button>` : "";
-  return `<div class="act">${req}${dev}</div>`;
+  return unbindButton(`data-unit="${u.id}"`);
 }
 function renderLicenses() {
   const list = state.units.filter(u => u.product === "ezprint" && u.license_key);
@@ -1163,8 +1194,7 @@ function renderLicenses() {
   const rows = list.map(u => ({ u, st: licenseState(u) }))
     .filter(x => f === "all" || x.st.key === f || (f === "offline" && x.st.key === "long"));
   const count = k => list.filter(u => licenseState(u).key === k).length;
-  const open = list.filter(u => openRequest(u)).length;
-  $("#licSummary").textContent = `${list.length} license${list.length === 1 ? "" : "s"} · ${count("online")} online · ${count("long")} offline 7+ days${open ? ` · ${open} unbind request${open === 1 ? "" : "s"}` : ""}`;
+  $("#licSummary").textContent = `${list.length} license${list.length === 1 ? "" : "s"} · ${count("online")} online · ${count("long")} offline 7+ days · ${count("unbound")} not in use`;
   $("#licTable").innerHTML = `<tr><th>License key</th><th>Unit</th>${state.dev ? "<th>Client</th>" : ""}<th>Last online</th><th>Status</th><th>Unbind</th></tr>` +
     (rows.map(({ u, st }) => `<tr>
       <td><span class="keycell"><span class="mono" data-key="${esc(u.license_key)}" data-shown="0">${esc(mask(u.license_key))}</span>
@@ -1180,23 +1210,7 @@ function renderLicenses() {
     k.textContent = shown ? mask(k.dataset.key) : k.dataset.key; k.dataset.shown = shown ? "0" : "1";
     b.setAttribute("aria-label", shown ? "Show key" : "Hide key");
   }));
-  const msgFor = b => b.closest("td").querySelector(".msg");
-  const say = (b, t, k) => { const m = msgFor(b); m.textContent = t; m.className = "msg " + k; };
-  document.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", async () => {
-    const act = b.dataset.act;
-    if (act === "ask" || act === "askoff") {
-      b.hidden = true; b.parentElement.querySelector(`[data-act="${act === "ask" ? "request" : "offline"}"]`).hidden = false;
-      return say(b, act === "ask" ? "Stops taking customers until activated again." : "Only after you emptied deviceId in Firebase.", "bad");
-    }
-    b.disabled = true;
-    let res;
-    if (act === "request") res = await db.rpc("request_unbind", { p_unit: b.dataset.unit, p_reason: "" });
-    if (act === "cancel") res = await db.rpc("cancel_unbind", { p_id: b.dataset.id });
-    if (act === "offline" || act === "done") res = await db.rpc("dev_mark_unbound", { p_unit: b.dataset.unit, p_reason: act === "offline" ? "Unbound by developer" : "" });
-    if (act === "reject") res = await db.from("unbind_requests").update({ status: "rejected", decided_at: new Date().toISOString(), decided_by: state.me.id }).eq("id", b.dataset.id).then(r => ({ data: r.error ? null : { ok: true }, error: r.error }));
-    if (res.error || !res.data?.ok) { b.disabled = false; return say(b, res.error?.message || UB_WHY[res.data?.reason] || res.data?.reason || "Failed", "bad"); }
-    await loadAll();
-  }));
+  wireUnbind($("#licTable"));
 }
 $("#licFilter").addEventListener("change", renderLicenses);
 
