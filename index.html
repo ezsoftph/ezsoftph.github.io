@@ -389,9 +389,9 @@ td.wrap-text { white-space: normal; min-width: 220px; }
       </div>
       <form class="panel" id="pcAddForm" hidden>
         <h3>Add an EzPC shop to your account</h3>
-        <p class="muted" style="margin:0">Type any <b>EZPC key</b> of the shop that is saved in <b>Admin › Online Sales</b> on a PC. That PC must have been online once. A shop can only be in one account: the first to add it keeps it.</p>
+        <p class="muted" style="margin:0">Type the <b>EZPC key</b> saved in <b>Admin › Online Sales</b> on a PC, or the <b>EzTab Pro key</b> of a tablet with <b>Online sales</b> turned on (Centralize settings). That device must have been online once. A shop can only be in one account: the first to add it keeps it.</p>
         <div class="toolbar">
-          <input id="pcAddKey" placeholder="EZPC key" autocomplete="off" spellcheck="false" style="max-width:300px;font-family:var(--f-mono);text-transform:uppercase">
+          <input id="pcAddKey" placeholder="EZPC or EzTab Pro key" autocomplete="off" spellcheck="false" style="max-width:300px;font-family:var(--f-mono);text-transform:uppercase">
           <button class="btn primary" type="submit">Add</button>
           <button class="btn" type="button" id="pcAddCancel">Cancel</button>
         </div>
@@ -536,7 +536,7 @@ async function start(session) {
 const TABS = ["home", "units", "pcs", "licenses", "accounts", "downloads"];
 const HEADS = {
   home: ["Home", "Your EzSoft products."], units: ["EzPrint Pro", "Every EzPrint Pro machine, live."],
-  pcs: ["EzPC", "Every EzPC shop: sales and PCs, live."],
+  pcs: ["EzPC", "Every centralized shop (EzPC and EzTab Pro tablets): sales and devices, live."],
   clients: ["Clients", "The shops that own your units."], accounts: ["Accounts", "Each login, its shop and its licenses."],
   unbind: ["Unbind requests", "Moving a license to a new coin slot."], licenses: ["Licenses", "Every EzPrint Pro license and when it was last online. Unbind frees a key for a new machine."], downloads: ["Downloads", "Apps, installers and firmware."]
 };
@@ -557,7 +557,7 @@ document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () =>
 // Products that report to EzSoft. "ready: false" = shown, not openable yet.
 const PRODUCTS = [
   { id: "ezprint", name: "EzPrint", sub: "Pro", tag: "Printing, ID copy and photocopy vendo", tab: "units", ready: true },
-  { id: "ezpc", name: "EzPC", sub: "", tag: "PC rental with EzTab Centralized", tab: "pcs", ready: true },
+  { id: "ezpc", name: "EzPC", sub: "", tag: "Centralized shops: PCs and EzTab tablets", tab: "pcs", ready: true },
   { id: "eztab", name: "EzTab", sub: "Pro", tag: "Piso tablet kiosk", ready: false, note: "Connects in a later EzTab update" },
   { id: "ezfi", name: "EzFi", sub: "Pro", tag: "PisoWiFi", ready: false, note: "Coming soon" }
 ];
@@ -732,7 +732,7 @@ function renderPcs() {
   $("#pcSummary").innerHTML = `
     <div class="stat"><span>Shops</span><b>${all.length}</b></div>
     <div class="stat"><span>Online</span><b style="color:var(--ok)">${online}</b></div>
-    <div class="stat"><span>PCs on</span><b>${pcsOn}</b></div>
+    <div class="stat"><span>Devices on</span><b>${pcsOn}</b></div>
     <div class="stat"><span>Sales today</span><b>${pesoN(todayTotal)}</b></div>`;
   if (!all.length) {
     $("#pcUnits").innerHTML = `<div class="empty" style="grid-column:1/-1">${state.dev
@@ -751,7 +751,7 @@ function renderPcs() {
       <div class="facts">
         <div class="fact"><small>Today</small><b>${pesoN(today(u).total)}</b></div>
         <div class="fact"><small>This week</small><b>${pesoN(earn(u, "week"))}</b></div>
-        <div class="fact"><small>PCs on</small><b>${on}<span class="muted" style="font-size:14px"> / ${pcs.length}</span></b></div>
+        <div class="fact"><small>Devices on</small><b>${on}<span class="muted" style="font-size:14px"> / ${pcs.length}</span></b></div>
       </div>
       <div class="muted mono foot">${esc(u.device_id)} · v${esc(u.app_version || "?")} · ${esc(ago(u.last_contact))}</div>
     </button>`;
@@ -777,7 +777,7 @@ function openPcUnit(id) {
         <span class="grow" style="flex:1"></span>
         <button class="btn" id="pingBtn" type="button">Ping</button></div>
       <div class="msg" id="pingMsg" hidden></div>
-      <div class="muted" style="font-size:13px">Sales are sent once a day. Press Ping for the latest (one PC answers within ${Math.round((u.poll_seconds || 300) / 60)} minutes).</div>
+      <div class="muted" style="font-size:13px">Sales are sent once a day. Press Ping for the latest (one PC or tablet answers within ${Math.round((u.poll_seconds || 300) / 60)} minutes).</div>
       <div class="facts">
         <div class="fact"><small>Today</small><b>${pesoN(today(u).total)}</b></div>
         <div class="fact"><small>This week</small><b>${pesoN(earn(u, "week"))}</b></div>
