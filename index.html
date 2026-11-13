@@ -320,6 +320,7 @@ td.wrap-text { white-space: normal; min-width: 220px; }
     <nav class="tabs" role="tablist" aria-label="Sections">
       <button class="tab" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
       <button class="tab" role="tab" data-tab="units" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="7" rx="1"/><rect x="3" y="10" width="18" height="8" rx="2"/><path d="M7 18v3h10v-3"/></svg><span>EzPrint Pro</span></button>
+      <button class="tab" role="tab" data-tab="pcs" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><span>EzPC</span></button>
       <button class="tab" role="tab" data-tab="licenses" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/></svg><span>Licenses</span></button>
       <button class="tab dev" role="tab" data-tab="accounts" aria-selected="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 16a3.5 3.5 0 0 1 7 0M15 10h3M15 14h3"/></svg><span>Accounts</span></button>
       <button class="tab" role="tab" data-tab="downloads" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg><span>Downloads</span></button>
@@ -360,6 +361,28 @@ td.wrap-text { white-space: normal; min-width: 220px; }
         <div class="msg" id="addMsg"></div>
       </form>
       <div class="grid" id="units"></div>
+    </section>
+
+    <!-- EzPC shops -->
+    <section id="tab-pcs" hidden style="display:grid;gap:20px">
+      <div class="summary" id="pcSummary"></div>
+      <div class="toolbar">
+        <span class="muted" style="font-size:14px">One card = one shop (its EzTab Centralized coin unit). Sales are for the whole shop.</span>
+        <span class="grow"></span>
+        <button class="btn primary" id="pcAddBtn" type="button">Add shop</button>
+      </div>
+      <form class="panel" id="pcAddForm" hidden>
+        <h3>Add an EzPC shop to your account</h3>
+        <p class="muted" style="margin:0">On any EZPC, open <b>Admin › Online Sales</b>. Type the <b>EZPC key</b> saved there and the <b>EzSoft code</b> shown below it (it changes every 10 minutes). The PC must be on and online.</p>
+        <div class="toolbar">
+          <input id="pcAddKey" placeholder="EZPC key" autocomplete="off" spellcheck="false" style="max-width:300px;font-family:var(--f-mono);text-transform:uppercase">
+          <input id="pcAddCode" placeholder="EzSoft code  XXXX-XXXX" autocomplete="off" spellcheck="false" maxlength="12" style="max-width:220px;font-family:var(--f-mono);text-transform:uppercase">
+          <button class="btn primary" type="submit">Add</button>
+          <button class="btn" type="button" id="pcAddCancel">Cancel</button>
+        </div>
+        <div class="msg" id="pcAddMsg"></div>
+      </form>
+      <div class="grid" id="pcUnits"></div>
     </section>
 
     <!-- Clients (developer) -->
@@ -489,13 +512,15 @@ async function start(session) {
   await loadAll();
   // A client with units in one product only: straight to that product.
   const mine = new Set(state.units.map(u => u.product));
-  showTab(!state.dev && mine.size === 1 && mine.has("ezprint") ? "units" : "home");
+  showTab(!state.dev && mine.size === 1 && mine.has("ezprint") ? "units"
+        : !state.dev && mine.size === 1 && mine.has("ezpc") ? "pcs" : "home");
 }
 
 // ───── Tabs ─────
-const TABS = ["home", "units", "licenses", "accounts", "downloads"];
+const TABS = ["home", "units", "pcs", "licenses", "accounts", "downloads"];
 const HEADS = {
   home: ["Home", "Your EzSoft products."], units: ["EzPrint Pro", "Every EzPrint Pro machine, live."],
+  pcs: ["EzPC", "Every EzPC shop: sales and PCs, live."],
   clients: ["Clients", "The shops that own your units."], accounts: ["Accounts", "Each login, its shop and its licenses."],
   unbind: ["Unbind requests", "Moving a license to a new coin slot."], licenses: ["Licenses", "Every EzPrint Pro license, when it was last online, and unbind requests."], downloads: ["Downloads", "Apps, installers and firmware."]
 };
@@ -507,6 +532,7 @@ function showTab(name) {
   if (name === "home") renderHome();
   if (name === "accounts") renderAccounts();
   if (name === "licenses") renderLicenses();
+  if (name === "pcs") renderPcs();
   if (name === "downloads") renderDownloads($("#dlApp"));
 }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => showTab(t.dataset.tab)));
@@ -515,6 +541,7 @@ document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () =>
 // Products that report to EzSoft. "ready: false" = shown, not openable yet.
 const PRODUCTS = [
   { id: "ezprint", name: "EzPrint", sub: "Pro", tag: "Printing, ID copy and photocopy vendo", tab: "units", ready: true },
+  { id: "ezpc", name: "EzPC", sub: "", tag: "PC rental with EzTab Centralized", tab: "pcs", ready: true },
   { id: "eztab", name: "EzTab", sub: "Pro", tag: "Piso tablet kiosk", ready: false, note: "Connects in a later EzTab update" },
   { id: "ezfi", name: "EzFi", sub: "Pro", tag: "PisoWiFi", ready: false, note: "Coming soon" }
 ];
@@ -579,6 +606,7 @@ async function loadAll() {
   state.clients = c.data || []; state.profiles = p.data || []; state.unbinds = ub.data || [];
   $("#updated").textContent = "Updated " + new Date().toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
   renderUnits();
+  if (!$("#tab-pcs").hidden) renderPcs();
   if (!$("#tab-home").hidden) renderHome();
   if (!$("#tab-licenses").hidden) renderLicenses();
 }
@@ -595,6 +623,7 @@ const unitName = u => u.name || u.status?.name || u.device_id;
 function today(u) {
   const s = u.status || {}, at = s.at ? new Date(s.at) : null;
   const fresh = at && at.toDateString() === new Date().toDateString();
+  if (u.product === "ezpc") return { total: fresh ? Number(s.earnings?.today?.pesos || 0) : 0, jobs: 0, pages: 0 };
   return fresh ? { total: Number(s.today?.total || 0), jobs: s.today?.jobs ?? 0, pages: s.today?.pages ?? 0 } : { total: 0, jobs: 0, pages: 0 };
 }
 function issues(u) {
@@ -664,6 +693,112 @@ function renderUnits() {
   }).join("");
   document.querySelectorAll("[data-unit]").forEach(c => c.addEventListener("click", () => openUnit(c.dataset.unit)));
 }
+
+// ───── EzPC shops ─────
+// status: { name, at, earnings: {today,week,month,all:{pesos,coins}, series:[{d,p,c}]}, pcs: {id: {timeLeft, version, at}} }
+const pcFresh = (pc) => pc?.at && (Date.now() - new Date(pc.at)) < 75 * 60000;   // reported in the last 75 min
+function pcList(u) { return Object.entries(u.status?.pcs || {}).map(([id, p]) => ({ id, ...p })).sort((a, b) => a.id.localeCompare(b.id)); }
+function earn(u, k) { const s = u.status || {}; return Number(s.earnings?.[k]?.pesos || 0); }
+
+function renderPcs() {
+  const all = state.units.filter(u => u.product === "ezpc");
+  const online = all.filter(u => u.online).length;
+  const todayTotal = all.reduce((t, u) => t + today(u).total, 0);
+  const pcsOn = all.reduce((t, u) => t + pcList(u).filter(pcFresh).length, 0);
+  $("#pcSummary").innerHTML = `
+    <div class="stat"><span>Shops</span><b>${all.length}</b></div>
+    <div class="stat"><span>Online</span><b style="color:var(--ok)">${online}</b></div>
+    <div class="stat"><span>PCs reporting</span><b>${pcsOn}</b></div>
+    <div class="stat"><span>Sales today</span><b>${pesoN(todayTotal)}</b></div>`;
+  if (!all.length) {
+    $("#pcUnits").innerHTML = `<div class="empty" style="grid-column:1/-1">${state.dev
+      ? "No EzPC shops yet. A shop appears here after an EZPC key is saved in Admin › Online Sales."
+      : "No EzPC shop in your account yet. Tap Add shop."}</div>`;
+    return;
+  }
+  $("#pcUnits").innerHTML = all.map(u => {
+    const pcs = pcList(u), on = pcs.filter(pcFresh).length;
+    return `<button class="card ${u.online ? "" : "offline"}" data-pcunit="${esc(u.id)}">
+      <div class="card-head">
+        <div><h3>${esc(unitName(u))}</h3>
+          <div class="sub">${esc([clientName(u.client_id), u.location].filter(Boolean).join(" · ") || "EzTab Centralized")}</div></div>
+        ${u.online ? `<span class="pill ok">Online</span>` : `<span class="pill off">Offline</span>`}
+      </div>
+      <div class="facts">
+        <div class="fact"><small>Today</small><b>${pesoN(today(u).total)}</b></div>
+        <div class="fact"><small>This week</small><b>${pesoN(earn(u, "week"))}</b></div>
+        <div class="fact"><small>PCs on</small><b>${on}<span class="muted" style="font-size:14px"> / ${pcs.length}</span></b></div>
+      </div>
+      <div class="muted mono foot">${esc(u.device_id)} · v${esc(u.app_version || "?")} · ${esc(ago(u.last_contact))}</div>
+    </button>`;
+  }).join("");
+  document.querySelectorAll("[data-pcunit]").forEach(c => c.addEventListener("click", () => openPcUnit(c.dataset.pcunit)));
+}
+
+function openPcUnit(id) {
+  const u = state.units.find(x => x.id === id); if (!u) return;
+  const s = u.status || {}, series = (s.earnings?.series || []).slice(-14);
+  const max = Math.max(1, ...series.map(x => Number(x.p || 0)));
+  const pcs = pcList(u);
+  const sheet = $("#sheet");
+  sheet.dataset.unit = id;
+  sheet.hidden = false; $("#sheetBg").hidden = false;
+  sheet.innerHTML = `
+    <div class="sheet-head"><div><h2>${esc(unitName(u))}</h2>
+      <div class="muted mono">Unit ${esc(u.device_id)} · EZPC v${esc(u.app_version || "?")}</div></div>
+      <button class="btn" id="closeSheet">Close</button></div>
+    <div class="panel">
+      <div style="display:flex;gap:8px;align-items:center">${u.online ? `<span class="pill ok">Online</span>` : `<span class="pill off">Offline</span>`}
+        <span class="muted">Last report ${esc(ago(u.last_seen))}${s.at ? " · sales as of " + esc(dt(s.at)) : ""}</span></div>
+      <div class="facts">
+        <div class="fact"><small>Today</small><b>${pesoN(today(u).total)}</b></div>
+        <div class="fact"><small>This week</small><b>${pesoN(earn(u, "week"))}</b></div>
+        <div class="fact"><small>This month</small><b>${pesoN(earn(u, "month"))}</b></div>
+        <div class="fact"><small>All time</small><b>${pesoN(earn(u, "all"))}</b></div>
+      </div>
+      <div class="muted" style="font-size:13px">Whole shop: every PC, tablet and phone on this coin unit.</div>
+    </div>
+    <div class="panel">
+      <h3>Last ${series.length || 14} days</h3>
+      ${series.length ? `<div class="bars" role="img" aria-label="Sales per day">
+        ${series.map(x => `<div class="${Number(x.p) ? "" : "zero"}" style="height:${(Number(x.p || 0) / max * 100).toFixed(1)}%" title="${esc(x.d)}: ${pesoN(x.p)}"></div>`).join("")}
+      </div>
+      <div class="bar-labels">${series.map((x, i) => `<span>${i % 2 ? "" : esc(String(x.d).split(" ").pop())}</span>`).join("")}</div>`
+      : `<div class="muted">No daily sales yet.</div>`}
+    </div>
+    <div class="panel"><h3>PCs</h3>
+      ${pcs.length ? `<div class="table-wrap"><table><tr><th>PC</th><th>Status</th><th class="r">Time left (at report)</th><th>Version</th><th>Last report</th></tr>
+        ${pcs.map(p => `<tr><td class="mono">${esc(p.id)}</td>
+          <td>${pcFresh(p) ? (Number(p.timeLeft) > 0 ? `<span class="pill ok">In use</span>` : `<span class="pill">Free</span>`) : `<span class="pill off">Off</span>`}</td>
+          <td class="r">${pcFresh(p) && Number(p.timeLeft) > 0 ? fmtLeft(Number(p.timeLeft)) : ""}</td>
+          <td>${esc(p.version || "")}</td><td>${esc(ago(p.at))}</td></tr>`).join("")}
+      </table></div>` : `<div class="muted">No PC has reported yet.</div>`}
+    </div>`;
+  $("#closeSheet").onclick = closeSheet;
+}
+
+// Add an EzPC shop: same check as EzPrint (key + EzSoft code from the PC's screen).
+$("#pcAddBtn").addEventListener("click", () => { $("#pcAddForm").hidden = false; $("#pcAddKey").focus(); });
+$("#pcAddCancel").addEventListener("click", () => { $("#pcAddForm").hidden = true; setMsg("pcAddMsg", ""); });
+$("#pcAddForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const key = $("#pcAddKey").value.trim().toUpperCase(), code = $("#pcAddCode").value.trim();
+  if (key.length < 6) return setMsg("pcAddMsg", "Type the whole EZPC key.", "bad");
+  if (code.replace(/[^A-Za-z0-9]/g, "").length !== 8) return setMsg("pcAddMsg", "Type the 8-character EzSoft code from Admin › Online Sales.", "bad");
+  const btn = $("#pcAddForm button[type=submit]"); if (btn.disabled) return;
+  btn.disabled = true; setMsg("pcAddMsg", "Checking…");
+  let data, error;
+  try { ({ data, error } = await db.rpc("claim_unit", { p_key: key, p_code: code })); } finally { btn.disabled = false; }
+  if (error) return setMsg("pcAddMsg", error.message, "bad");
+  const why = { not_found: "No shop with that key yet. Save the key in Admin › Online Sales, wait for Connected, then try again.",
+    taken: "That shop is linked to another account. Contact the developer.", too_many: "Too many tries. Wait an hour and try again.",
+    bad_code: "Wrong or old EzSoft code. Look at Admin › Online Sales again (it changes every 10 minutes).",
+    no_code: "No EzSoft code yet. Keep the PC online 2 minutes, then try again.", login: "Log in again." };
+  if (!data.ok) return setMsg("pcAddMsg", why[data.reason] || data.reason, "bad");
+  setMsg("pcAddMsg", data.already ? `${data.unit} is already in your account.` : `Added ${data.unit}.`, "ok");
+  $("#pcAddKey").value = ""; $("#pcAddCode").value = "";
+  await loadAll();
+});
 
 // ───── Unit sheet ─────
 function closeSheet() { $("#sheet").hidden = true; $("#sheetBg").hidden = true; }
