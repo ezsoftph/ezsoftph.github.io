@@ -144,6 +144,11 @@ label { display: grid; gap: 5px; font-weight: 600; font-size: 14px; color: var(-
 #licTable .msg { overflow-wrap: anywhere; }
 .act .btn { padding: 5px 10px; font-size: 14px; }
 .keycell { display: inline-flex; align-items: center; gap: 6px; }
+.prod-tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); }
+.prod-tag.ezprint { background: #E8F0FB; color: #1D4F91; }
+.prod-tag.ezpc { background: var(--accent-soft); color: var(--accent-ink); }
+.prod-tag.eztab { background: #F6ECFB; color: #6B2E8C; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .prod-tag.ezprint { background: #18263a; color: #9cc0f0; } :root:not([data-theme="light"]) .prod-tag.eztab { background: #2a1d33; color: #d3a6ec; } }
 .icon-btn { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border-radius: 8px; flex: none; border: 0; background: transparent; color: var(--muted); }
 .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
 .icon-btn.ub:hover { background: var(--bad-soft); color: var(--bad); }
@@ -418,7 +423,13 @@ td.wrap-text { white-space: normal; min-width: 220px; }
     <!-- Unbind requests -->
     <section id="tab-licenses" hidden style="display:grid;gap:16px">
       <div class="toolbar">
-        <select id="licFilter" aria-label="Show" style="max-width:240px">
+        <select id="licProduct" aria-label="Product" style="max-width:170px">
+          <option value="all">All products</option>
+          <option value="ezprint">EzPrint</option>
+          <option value="ezpc">EzPC</option>
+          <option value="eztab">EzTab</option>
+        </select>
+        <select id="licFilter" aria-label="Show" style="max-width:220px">
           <option value="all">All licenses</option>
           <option value="online">Online</option>
           <option value="offline">Offline</option>
@@ -427,7 +438,18 @@ td.wrap-text { white-space: normal; min-width: 220px; }
         </select>
         <span class="grow"></span>
         <span class="muted" id="licSummary" style="font-size:14px"></span>
+        <button class="btn primary" id="licAddBtn" type="button">Add license</button>
       </div>
+      <form class="panel" id="licAddForm" hidden>
+        <h3>Add a license to your account</h3>
+        <p class="muted" style="margin:0">Type any EzPrint, EZPC or EzTab Pro key. It must be activated on its machine. A license can only be in one account: the first to add it keeps it.</p>
+        <div class="toolbar">
+          <input id="licAddKey" placeholder="License key" autocomplete="off" spellcheck="false" style="max-width:300px;font-family:var(--f-mono);text-transform:uppercase">
+          <button class="btn primary" type="submit">Add</button>
+          <button class="btn" type="button" id="licAddCancel">Cancel</button>
+        </div>
+        <div class="msg" id="licAddMsg"></div>
+      </form>
       <div class="panel"><div class="table-wrap"><table id="licTable"></table></div></div>
     </section>
 
@@ -545,7 +567,7 @@ const HEADS = {
   home: ["Home", "Your EzSoft products."], units: ["EzPrint Pro", "Every EzPrint Pro machine, live."],
   pcs: ["EzPC", "Every centralized shop (EzPC and EzTab Pro tablets): sales and devices, live."],
   clients: ["Clients", "The shops that own your units."], accounts: ["Accounts", "Each login, its shop and its licenses."],
-  unbind: ["Unbind requests", "Moving a license to a new coin slot."], licenses: ["Licenses", "Every EzPrint Pro license and when it was last online. Unbind frees a key for a new machine."], downloads: ["Downloads", "Apps, installers and firmware."]
+  unbind: ["Unbind requests", "Moving a license to a new coin slot."], licenses: ["Licenses", "Every license (EzPrint, EZPC, EzTab Pro) and when it was last online. Unbind frees a key for a new machine."], downloads: ["Downloads", "Apps, installers and firmware."]
 };
 function showTab(name) {
   document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === name));
@@ -565,7 +587,7 @@ document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () =>
 const PRODUCTS = [
   { id: "ezprint", name: "EzPrint", sub: "Pro", tag: "Printing, ID copy and photocopy vendo", tab: "units", ready: true },
   { id: "ezpc", name: "EzPC", sub: "", tag: "PC and tablet shops", tab: "pcs", ready: true },
-  { id: "eztab", name: "EzTab", sub: "Pro", tag: "Piso tablet kiosk", ready: false, note: "Connects in a later EzTab update" },
+  { id: "eztab", name: "EzTab", sub: "Pro", tag: "Piso tablet kiosk", tab: "licenses", ready: true },
   { id: "ezfi", name: "EzFi", sub: "Pro", tag: "PisoWiFi", ready: false, note: "Coming soon" }
 ];
 function renderHome() {
@@ -646,11 +668,12 @@ const unitName = u => u.name || u.status?.name || u.device_id;
 function today(u) {
   const s = u.status || {}, at = s.at ? new Date(s.at) : null;
   const fresh = at && at.toDateString() === new Date().toDateString();
-  if (u.product === "ezpc") return { total: fresh ? Number(s.earnings?.today?.pesos || 0) : 0, jobs: 0, pages: 0 };
+  if (u.product === "ezpc" || u.product === "eztab") return { total: fresh ? Number(s.earnings?.today?.pesos || 0) : 0, jobs: 0, pages: 0 };
   return fresh ? { total: Number(s.today?.total || 0), jobs: s.today?.jobs ?? 0, pages: s.today?.pages ?? 0 } : { total: 0, jobs: 0, pages: 0 };
 }
 function issues(u) {
   const s = u.status || {}, out = [];
+  if (u.product === "eztab" && !u.last_contact) return [];      // added by key only: never reports
   // Offline: the rest of the status is old (it may have been fixed since), so only say "offline".
   if (!u.online) return [{ kind: "bad", text: "Offline · last seen " + ago(u.last_contact) }];
   for (const k of ["printerColor", "printerBw"]) {
@@ -1145,6 +1168,8 @@ async function watchPing(id) {
 const mask = k => !k ? "—" : k.length <= 4 ? k : k.slice(0, -4).replace(/[A-Za-z0-9]/g, "•") + k.slice(-4);
 function licenseState(u) {
   if (isUnbound(u)) return { key: "unbound", text: "Not in use", cls: "off" };
+  // EzTab added by key only (Online view off / old APK): activated, never reports.
+  if (u.product === "eztab" && !u.last_contact) return { key: "active", text: "Active", cls: "ok" };
   if (u.online) return { key: "online", text: "Online", cls: "ok" };
   const days = u.last_contact ? (Date.now() - new Date(u.last_contact)) / 86400000 : 999;
   if (days >= 7) return { key: "long", text: u.last_contact ? `Offline ${Math.floor(days)} days` : "Never online", cls: "bad" };
@@ -1200,30 +1225,89 @@ function licenseActions(u) {
   if (licenseState(u).key === "unbound") return `<span class="muted" style="font-size:13px">—</span>`;
   return unbindButton(`data-unit="${u.id}"`);
 }
+const EYE_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const MODE = { classic: "Classic", smart: "Smart", centralize: "Centralize" };
+const keyCell = k => `<span class="keycell"><span class="mono" data-key="${esc(k)}" data-shown="0">${esc(mask(k))}</span>
+  <button class="icon-btn" data-eye aria-label="Show key" title="Show key">${EYE_SVG}</button></span>`;
+
+// Every license in one list: EzPrint units, EzTab tablets, and the PCs of EzPC shops
+// (a PC's key lives in its ESP32, so the PC shows by its PC ID).
+function licenseRows() {
+  const rows = [];
+  for (const u of state.units) {
+    if (u.product === "ezprint" && u.license_key) {
+      rows.push({ product: "ezprint", label: "EzPrint", id: u.license_key, cell: keyCell(u.license_key), mode: "",
+        name: unitName(u), title: u.device_id, client: u.client_id, last: u.online ? "now" : ago(u.last_contact),
+        lastAt: u.last_contact, st: licenseState(u), action: licenseActions(u) });
+    } else if (u.product === "eztab" && u.license_key) {
+      const st = licenseState(u);
+      rows.push({ product: "eztab", label: "EzTab", id: u.license_key, cell: keyCell(u.license_key),
+        mode: MODE[u.status?.mode] || "", name: u.name || u.tablet || "Tablet", title: u.device_id, client: u.client_id,
+        last: u.last_contact ? (u.online ? ago(u.last_contact) : ago(u.last_contact)) : "—", lastAt: u.last_contact,
+        st, action: licenseActions(u) });
+    } else if (u.product === "ezpc") {
+      for (const p of pcList(u).filter(p => !p.tablet)) {
+        const st = p.unbound ? { key: "unbound", text: "Not in use", cls: "off" }
+          : p.on ? { key: "online", text: "Online", cls: "ok" } : { key: "offline", text: "Offline", cls: "warn" };
+        rows.push({ product: "ezpc", label: "EzPC", id: p.id, cell: `<span class="mono">${esc(p.id)}</span>`, mode: "",
+          name: unitName(u), title: u.device_id, client: u.client_id, last: p.on ? "now" : ago(p.seen), lastAt: p.seen, st,
+          action: p.unbound ? `<span class="muted" style="font-size:13px">—</span>` : unbindButton(`data-unit="${esc(u.id)}" data-pc="${esc(p.id)}"`) });
+      }
+    }
+  }
+  return rows.sort((a, b) => a.label.localeCompare(b.label) || String(a.name).localeCompare(String(b.name)));
+}
+
 function renderLicenses() {
-  const list = state.units.filter(u => u.product === "ezprint" && u.license_key);
-  const f = $("#licFilter").value;
-  const rows = list.map(u => ({ u, st: licenseState(u) }))
-    .filter(x => f === "all" || x.st.key === f || (f === "offline" && x.st.key === "long"));
-  const count = k => list.filter(u => licenseState(u).key === k).length;
+  const all = licenseRows();
+  const pf = $("#licProduct").value, f = $("#licFilter").value;
+  const list = all.filter(r => pf === "all" || r.product === pf);
+  const rows = list.filter(r => f === "all" || r.st.key === f || (f === "offline" && r.st.key === "long")
+                              || (f === "online" && r.st.key === "active"));
+  const count = k => list.filter(r => r.st.key === k).length;
   $("#licSummary").textContent = `${list.length} license${list.length === 1 ? "" : "s"} · ${count("online")} online · ${count("long")} offline 7+ days · ${count("unbound")} not in use`;
-  $("#licTable").innerHTML = `<tr><th>License key</th><th>Unit</th>${state.dev ? "<th>Client</th>" : ""}<th>Last online</th><th>Status</th><th>Unbind</th></tr>` +
-    (rows.map(({ u, st }) => `<tr>
-      <td><span class="keycell"><span class="mono" data-key="${esc(u.license_key)}" data-shown="0">${esc(mask(u.license_key))}</span>
-        <button class="icon-btn" data-eye aria-label="Show key" title="Show key"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></span></td>
-      <td title="${esc(u.device_id)}">${esc(unitName(u))}</td>
-      ${state.dev ? `<td>${esc(clientName(u.client_id) || "—")}</td>` : ""}
-      <td title="${esc(dt(u.last_contact))}">${u.online ? "now" : esc(ago(u.last_contact))}</td>
-      <td><span class="pill ${st.cls}">${esc(st.text)}</span></td>
-      <td>${licenseActions(u)}</td></tr>`).join("")
-      || `<tr><td colspan="6" class="muted">${list.length ? "No licenses match." : "No licenses yet. A license shows here after its machine is activated and online once."}</td></tr>`);
-  document.querySelectorAll("[data-eye]").forEach(b => b.addEventListener("click", () => {
+  const cols = state.dev ? 8 : 7;
+  $("#licTable").innerHTML = `<tr><th>Product</th><th>License</th><th>Mode</th><th>Unit</th>${state.dev ? "<th>Client</th>" : ""}<th>Last online</th><th>Status</th><th>Unbind</th></tr>` +
+    (rows.map(r => `<tr>
+      <td><span class="prod-tag ${r.product}">${r.label}</span></td>
+      <td>${r.cell}</td>
+      <td>${esc(r.mode || "—")}</td>
+      <td title="${esc(r.title)}">${esc(r.name)}</td>
+      ${state.dev ? `<td>${esc(clientName(r.client) || "—")}</td>` : ""}
+      <td title="${esc(r.lastAt ? dt(r.lastAt) : "")}">${esc(r.last)}</td>
+      <td><span class="pill ${r.st.cls}">${esc(r.st.text)}</span></td>
+      <td>${r.action}</td></tr>`).join("")
+      || `<tr><td colspan="${cols}" class="muted">${list.length ? "No licenses match." : "No licenses yet. Tap Add license and type a key."}</td></tr>`);
+  document.querySelectorAll("#licTable [data-eye]").forEach(b => b.addEventListener("click", () => {
     const k = b.previousElementSibling, shown = k.dataset.shown === "1";
     k.textContent = shown ? mask(k.dataset.key) : k.dataset.key; k.dataset.shown = shown ? "0" : "1";
     b.setAttribute("aria-label", shown ? "Show key" : "Hide key");
   }));
   wireUnbind($("#licTable"));
 }
+$("#licProduct").addEventListener("change", renderLicenses);
+
+// Add a license with any key (Edge Function license-add: also finds EzTab keys in Firebase).
+$("#licAddBtn").addEventListener("click", () => { $("#licAddForm").hidden = false; $("#licAddKey").focus(); });
+$("#licAddCancel").addEventListener("click", () => { $("#licAddForm").hidden = true; setMsg("licAddMsg", ""); });
+$("#licAddForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const key = $("#licAddKey").value.trim();
+  if (key.length < 6) return setMsg("licAddMsg", "Type the whole license key.", "bad");
+  const btn = $("#licAddForm button[type=submit]"); if (btn.disabled) return;
+  btn.disabled = true; setMsg("licAddMsg", "Checking…");
+  let data, error;
+  try { ({ data, error } = await db.functions.invoke("license-add", { body: { key } })); } finally { btn.disabled = false; }
+  if (error) return setMsg("licAddMsg", "Couldn't reach EzSoft. Check your internet and try again.", "bad");
+  const why = { not_found: "No license with that key. Check it, or turn its machine on with internet once.",
+    not_activated: "That key isn't activated on any machine yet.", revoked: "That license is revoked. Contact the developer.",
+    taken: "That license is in another account. Contact the developer.", too_many: "Too many tries. Wait an hour and try again.",
+    login: "Log in again.", server: "Something went wrong. Try again." };
+  if (!data?.ok) return setMsg("licAddMsg", why[data?.reason] || data?.reason || "Failed", "bad");
+  setMsg("licAddMsg", data.already ? `${data.unit} is already in your account.` : `Added ${data.unit}.`, "ok");
+  $("#licAddKey").value = "";
+  await loadAll();
+});
 $("#licFilter").addEventListener("change", renderLicenses);
 
 // ───── Add unit (license key) ─────
